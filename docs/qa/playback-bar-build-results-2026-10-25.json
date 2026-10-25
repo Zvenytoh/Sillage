@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-25",
+  "revision": "Playback bar alignment and left-anchored volume/progress fills",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "slintWarnings": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target",
+      "exitCode": 0
+    }
+  ],
+  "artifact": {
+    "sha256": "3210E5025896B8A88BD039E0F7537A71C06FAD3BE4652EB5321A70C7AF7A25B8",
+    "path": "dist/Sillage-player-preview.exe",
+    "bytes": 18032128
+  },
+  "shortcut": {
+    "name": "Sillage.lnk",
+    "targetVerified": true
+  },
+  "userScreenshotReviewed": true,
+  "correctedRevisionLaunched": false,
+  "newRenderedVisualQA": false,
+  "desktopControlled": false,
+  "audioPlayed": false,
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "buildScheduling": {
+    "priority": "BelowNormal",
+    "jobs": 2
+  }
+}

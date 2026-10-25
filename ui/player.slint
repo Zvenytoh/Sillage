@@ -17,8 +17,8 @@ export component PlayerControls inherits Rectangle {
     callback toggle-save(); callback toggle-queue(); callback toggle-details(); callback mute();
     background: Theme.canvas;
     HorizontalLayout {
-        x: 16px; y: 16px; width: parent.width * 0.28 - 24px; height: 64px; spacing: 12px;
-        Rectangle { width: 56px; Cover { artwork: root.artwork; width: 56px; height: 56px; y: 4px; } }
+        x: 16px; y: 16px; width: min(360px, parent.width * 0.28 - 24px); height: 56px; spacing: 12px;
+        Rectangle { width: 56px; Cover { artwork: root.artwork; width: 56px; height: 56px; x: 0; y: 0; } }
         VerticalLayout {
             alignment: center; spacing: 5px; horizontal-stretch: 1;
             Text { text: root.title; color: Theme.text; font-size: 14px; font-weight: 600; overflow: elide; min-width: 0px; }
@@ -27,9 +27,9 @@ export component PlayerControls inherits Rectangle {
         ActionButton { icon: @image-url("../assets/ui/heart.svg"); label: root.saved ? "Retirer des favoris" : "Ajouter aux favoris"; quiet: true; round: true; active: root.saved; enabled: root.loaded && root.can-save; clicked => { root.toggle-save(); } }
     }
     Rectangle {
-        x: parent.width * 0.29; width: parent.width * 0.42; height: 88px;
+        x: (parent.width - self.width) / 2; y: 0; width: min(620px, parent.width * 0.42); height: 88px;
         HorizontalLayout {
-            x: (parent.width - 244px) / 2; y: 8px; width: 244px; height: 40px; spacing: 8px;
+            x: (parent.width - 232px) / 2; y: 8px; width: 232px; height: 40px; spacing: 8px;
             ActionButton { icon: @image-url("../assets/ui/shuffle.svg"); label: "Lecture aléatoire"; quiet: true; round: true; active: root.shuffle; clicked => { root.toggle-shuffle(); } }
             ActionButton { icon: @image-url("../assets/ui/previous.svg"); label: "Titre précédent"; quiet: true; round: true; enabled: root.can-previous && !root.busy; clicked => { root.previous(); } }
             ActionButton {
@@ -40,21 +40,21 @@ export component PlayerControls inherits Rectangle {
             ActionButton { icon: @image-url("../assets/ui/next.svg"); label: "Titre suivant"; quiet: true; round: true; enabled: root.can-next && !root.busy; clicked => { root.next(); } }
             ActionButton { icon: @image-url("../assets/ui/repeat.svg"); label: "Répéter ce titre"; quiet: true; round: true; active: root.repeat; clicked => { root.toggle-repeat(); } }
         }
-        Text { x: 0; y: 59px; width: 38px; text: root.elapsed; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
+        Text { x: 0; y: 56px; width: 40px; height: 20px; vertical-alignment: center; text: root.elapsed; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
         Rectangle {
-            x: 44px; y: 64px; width: parent.width - 88px; height: 4px; border-radius: 2px; background: #4d4d4d;
-            Rectangle { width: parent.width * clamp(root.progress, 0, 1); height: 4px; border-radius: 2px; background: Theme.text; }
+            x: 48px; y: 64px; width: parent.width - 96px; height: 4px; border-radius: 2px; background: #4d4d4d;
+            Rectangle { x: 0; y: 0; width: parent.width * clamp(root.progress, 0, 1); height: 4px; border-radius: 2px; background: Theme.text; }
             accessible-role: text;
             accessible-label: "Position de lecture " + root.elapsed + " sur " + root.duration-label + ". Le déplacement dans le morceau est indisponible.";
         }
-        Text { x: parent.width - 38px; y: 59px; width: 38px; text: root.duration-label == "" ? "–:––" : root.duration-label; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
+        Text { x: parent.width - 40px; y: 56px; width: 40px; height: 20px; vertical-alignment: center; text: root.duration-label == "" ? "--:--" : root.duration-label; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
     }
     HorizontalLayout {
-        x: parent.width - 272px; y: 28px; width: 256px; height: 40px; spacing: 4px;
+        x: parent.width - 288px; y: 24px; width: 272px; height: 40px; spacing: 4px;
         ActionButton { icon: @image-url("../assets/ui/stop.svg"); label: root.busy ? "Annuler le chargement" : "Arrêter"; quiet: true; round: true; enabled: root.loaded || root.busy; clicked => { root.stop(); } }
         ActionButton { icon: @image-url("../assets/ui/queue.svg"); label: "Afficher la file"; quiet: true; round: true; active: root.queue-open; clicked => { root.toggle-queue(); } }
         ActionButton { icon: @image-url("../assets/ui/panel.svg"); label: "Afficher le morceau"; quiet: true; round: true; active: root.details-open && !root.queue-open; clicked => { root.toggle-details(); } }
         ActionButton { icon: root.volume == 0 ? @image-url("../assets/ui/muted.svg") : @image-url("../assets/ui/volume.svg"); label: "Couper ou rétablir le son"; quiet: true; round: true; clicked => { root.mute(); } }
-        Rectangle { width: 80px; VolumeControl { width: parent.width; y: (parent.height - 32px) / 2; value <=> root.volume; changed(value) => { root.volume-changed(value); } } }
+        Rectangle { width: 96px; VolumeControl { x: 0; width: parent.width; y: (parent.height - 32px) / 2; value <=> root.volume; changed(value) => { root.volume-changed(value); } } }
     }
 }

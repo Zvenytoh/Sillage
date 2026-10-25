@@ -52,6 +52,17 @@ components:
 
 # Sillage desktop design
 
+## Playback bar geometry refinement
+
+The fixed bar remains 88 px high. Artwork is 56 px at y=16; metadata and the
+right-hand actions share the y=44 centerline. Transport controls occupy exactly
+232 px, centered above a progress row capped at 620 px. Timestamp boxes have an
+explicit 20 px height and the same baseline. Volume has a 96 px allocation.
+Progress and volume fills are explicitly anchored at x=0/y=0; their width must
+never invoke Slint's automatic centering. Volume fill and thumb use one clamped
+fraction. These corrections follow the user's native screenshot; the revised
+render and pointer interaction still require native verification.
+
 ## Window controls — explicit user revision
 
 The main window has no native title bar (`no-frame: true`). Three integrated

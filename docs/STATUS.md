@@ -4,6 +4,16 @@ Date : 2026-10-25.
 
 ## Reprise active — accueil français violet
 
+- Dernière demande : alignement/détails du lecteur inférieur et bug visuel du
+  volume. Capture utilisateur examinée : remplissage violet centré dans sa
+  piste, durée tronquée, groupes verticaux décalés. Correction dans
+  `ui/player.slint` / `ui/volume.slint` : remplissages ancrés à gauche,
+  coordonnées communes, hauteurs des durées explicites, jauge 96 px.
+  Aucun changement du moteur audio, lancement ou contrôle du bureau.
+  Formatage, Clippy toutes cibles sans avertissement et Release --bins réussis.
+  Nouvelle préversion `dist/Sillage-player-preview.exe`, raccourci actualisé,
+  ancienne fenêtre préservée. Preuves : `docs/qa/playback-bar-build-results-2026-10-25.json`.
+
 - Demande suivante : retirer la barre de titre Windows et intégrer uniquement
   réduire, agrandir/restaurer, fermer, dans cet ordre. Source :
   `ui/window-controls.slint`, `ui/app.slint`, quatre SVG. Déplacement et
