@@ -1,0 +1,13 @@
+/target/
+/.tools/
+/graphify-out/
+/benchmarks/results/
+/dist/
+/.env
+/.env.*
+*.log
+*.dmp
+*.session
+*.cookies
+Thumbs.db
+.DS_Store
