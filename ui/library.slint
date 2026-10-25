@@ -50,26 +50,33 @@ export component MusicLibrary inherits Rectangle {
     in property <string> selected-id; in property <string> search-error; in property <string> query;
     in property <int> page;
     in-out property <bool> songs-only;
+    in-out property <bool> all-trends;
     callback play-track(SearchRow); callback save-track(SearchRow); callback enqueue(SearchRow);
-    callback request-artwork(SearchRow); callback refresh-home(); callback navigate(int);
+    callback request-artwork(SearchRow); callback refresh-home(); callback navigate(int); callback trends-expanded();
     if root.page == 0: ScrollView {
         content-height: home-content.height;
         content-width: self.visible-width;
         home-content := VerticalLayout { x: 0; y: 0; width: parent.width; height: self.preferred-height; alignment: start; padding-left: 28px; padding-right: 28px; padding-bottom: 28px; spacing: 24px;
             property <length> card-width: min(200px, (self.width - 56px - (root.card-indices.length - 1) * 18px) / root.card-indices.length);
-            HorizontalLayout { height: 40px;
-                Text { text: "Accueil"; color: Theme.text; font-size: 30px; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
-                ActionButton { text: "Actualiser"; quiet: true; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
+            HorizontalLayout { height: 48px;
+                Text { text: "La musique laisse une trace."; color: Theme.text; font-family: "Georgia"; font-size: 28px; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+                ActionButton { text: "Actualiser"; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
             }
             if root.recent-rows.length > 0: VerticalLayout { alignment: start; spacing: 16px;
-                HorizontalLayout { height: 32px; Text { text: "Écoutés récemment"; color: Theme.text; font-size: 21px; font-weight: 700; horizontal-stretch: 1; vertical-alignment: center; } ActionButton { text: "Tout voir"; quiet: true; clicked => { root.navigate(3); } } }
+                HorizontalLayout { height: 32px; Text { text: "Dans votre sillage"; color: Theme.text; font-family: "Georgia"; font-size: 23px; font-weight: 700; horizontal-stretch: 1; vertical-alignment: center; } ActionButton { text: "Tout voir"; quiet: true; clicked => { root.navigate(3); } } }
                 HorizontalLayout { alignment: start; spacing: 18px;
-                    for index in root.card-indices: MusicCard { width: home-content.card-width; horizontal-stretch: 0; track: root.recent-rows[index]; visible: root.recent-rows.length > index; busy: root.busy; selected: root.selected-id == root.recent-rows[index].id;
-                        play => { root.play-track(root.recent-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
+                    for index in root.card-indices: VerticalLayout { width: home-content.card-width; horizontal-stretch: 0; spacing: 10px; visible: root.recent-rows.length > index;
+                        Rectangle { height: 10px; background: transparent;
+                            Rectangle { x: 0; y: 4px; width: parent.width + (root.recent-rows.length > index + 1 ? 18px : 0px); height: 2px; background: Theme.line; }
+                            Rectangle { x: 0; y: 1px; width: 8px; height: 8px; border-radius: 4px; background: Theme.accent; }
+                        }
+                        MusicCard { width: parent.width; track: root.recent-rows[index]; busy: root.busy; selected: root.selected-id == root.recent-rows[index].id;
+                            play => { root.play-track(root.recent-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
+                        }
                     }
                 }
             }
-            if root.recent-rows.length == 0: Text { height: self.preferred-height; text: "Vos écoutes récentes apparaîtront ici après vos premiers morceaux."; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
+            if root.recent-rows.length == 0: Text { height: self.preferred-height; text: "Rien dans votre sillage pour l'instant. Le premier morceau ouvrira la voie."; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
             if root.home-loading && root.trending-rows.length == 0: VerticalLayout { spacing: 12px;
                 Text { text: "Chargement de votre sélection…"; color: Theme.muted; }
                 for skeleton in [0,1,2]: Rectangle { height: 48px; background: #ffffff08; border-radius: 5px; }
@@ -79,21 +86,40 @@ export component MusicLibrary inherits Rectangle {
                 ActionButton { text: "Réessayer"; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
             }
             if root.trending-rows.length > 0: VerticalLayout { alignment: start; spacing: 12px;
-                Text { height: 28px; text: "Tendances en France"; color: Theme.text; font-size: 21px; font-weight: 700; }
-                Text { height: self.preferred-height; text: root.home-source; color: Theme.muted; font-size: 11px; wrap: word-wrap; }
+                Text { height: 30px; text: "Tendances en France"; color: Theme.text; font-family: "Georgia"; font-size: 24px; font-weight: 700; }
+                Text { height: self.preferred-height; text: root.home-source; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
+                HorizontalLayout { height: 144px; spacing: 20px;
+                    Rectangle { width: 256px; horizontal-stretch: 0; Cover { artwork: root.trending-rows[0].artwork; width: parent.width; height: parent.height; } }
+                    VerticalLayout { alignment: center; spacing: 8px; horizontal-stretch: 1;
+                        Text { text: "01  /  À LA UNE"; color: Theme.accent; font-size: 13px; font-weight: 700; }
+                        Text { text: root.trending-rows[0].title; color: Theme.text; font-family: "Georgia"; font-size: 25px; font-weight: 700; overflow: elide; min-width: 0px; }
+                        Text { text: root.trending-rows[0].artist; color: Theme.muted; font-size: 14px; overflow: elide; min-width: 0px; }
+                        ActionButton { text: "Écouter"; icon: @image-url("../assets/ui/play.svg"); accented: true; enabled: !root.busy; clicked => { root.play-track(root.trending-rows[0]); } }
+                    }
+                }
                 for pair in [0,1,2,3]: HorizontalLayout { height: 62px; spacing: 18px;
                     for side in [0,1]: SongRow {
                         width: (home-content.width - 56px - 18px) / 2; horizontal-stretch: 0;
-                        track: root.trending-rows[pair * 2 + side]; number: pair * 2 + side + 1;
-                        visible: root.trending-rows.length > pair * 2 + side; busy: root.busy; actions: false;
+                        track: root.trending-rows[pair * 2 + side + 1]; number: pair * 2 + side + 2; chart: true;
+                        visible: root.trending-rows.length > pair * 2 + side + 1; busy: root.busy; actions: false;
                         selected: root.selected-id == self.track.id;
-                        play => { root.play-track(root.trending-rows[pair * 2 + side]); }
+                        play => { root.play-track(root.trending-rows[pair * 2 + side + 1]); }
+                        request-artwork(row) => { root.request-artwork(row); }
+                    }
+                }
+                if root.trending-rows.length > 9: ActionButton { text: root.all-trends ? "Réduire le classement" : "Voir les 20 tendances"; clicked => { root.all-trends = !root.all-trends; root.trends-expanded(); } }
+                if root.all-trends: VerticalLayout { spacing: 0px;
+                    for index in [9,10,11,12,13,14,15,16,17,18,19]: SongRow {
+                        width: home-content.width - 56px; track: root.trending-rows[index]; number: index + 1; chart: true;
+                        visible: root.trending-rows.length > index; busy: root.busy; actions: false;
+                        selected: root.selected-id == self.track.id;
+                        play => { root.play-track(root.trending-rows[index]); }
                         request-artwork(row) => { root.request-artwork(row); }
                     }
                 }
             }
             if root.discovery-rows.length > 0: VerticalLayout { alignment: start; spacing: 16px;
-                Text { height: 28px; text: "À découvrir"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                Text { height: 30px; text: "À découvrir"; color: Theme.text; font-family: "Georgia"; font-size: 24px; font-weight: 700; }
                 HorizontalLayout { alignment: start; spacing: 18px;
                     for index in root.card-indices: MusicCard { width: home-content.card-width; horizontal-stretch: 0; wide: true; track: root.discovery-rows[index]; visible: root.discovery-rows.length > index; busy: root.busy; selected: root.selected-id == self.track.id;
                         play => { root.play-track(root.discovery-rows[index]); } request-artwork(row) => { root.request-artwork(row); }

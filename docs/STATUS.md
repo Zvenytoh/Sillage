@@ -2,7 +2,27 @@
 
 Date : 2026-10-25.
 
-## Reprise active — accueil français violet
+## Reprise active — identité encre et corail
+
+- L'utilisateur a signalé que le pictogramme « bibliothèque » ouvrait/refermait
+  toute la colonne de manière déroutante. La colonne reste désormais fixe ;
+  un chevron masque uniquement les favoris et n'apparaît que s'il y en a.
+- Choix explicite : **fond encre plat et accent corail**. L'accueil remplace le
+  lavis violet par une surface unie, emploie Georgia pour les titres éditoriaux,
+  distingue le n°1 des tendances et permet de déplier les titres 10 à 20. Les
+  pochettes de titres restent carrées ; découverte et une restent en 16:9.
+  « cache de 0 h » disparaît de la copie visible ; la source demeure indiquée.
+  Les récents forment une frise reliée ; l'historique vide et la progression
+  reprennent aussi le motif du sillage.
+- Formatage, Clippy toutes cibles sans avertissement et compilation Release
+  réussis. Préversion distincte `dist/Sillage-editorial-preview.exe`, raccourci
+  Bureau actualisé et relu, ancienne version préservée. Empreinte :
+  `docs/qa/editorial-home-build-results-2026-10-25.json`. Aucun lancement du
+  lecteur, contrôle du bureau, écoute ni test unitaire/fonctionnel. La qualité
+  du rendu natif et l'interaction du chevron restent à contrôler après
+  réautorisation.
+
+## Historique — accueil français violet
 
 - Dernière demande : supprimer « À propos », « Votre musique, sur ce PC » et
   le pictogramme coloré près de Sillage ; neutraliser la surbrillance violette

@@ -146,8 +146,12 @@ impl Controller {
             0 => ui
                 .get_recent_rows()
                 .iter()
-                .take(6)
-                .chain(ui.get_trending_rows().iter().take(8))
+                .take(8)
+                .chain(
+                    ui.get_trending_rows()
+                        .iter()
+                        .take(if ui.get_all_trends() { 20 } else { 9 }),
+                )
                 .chain(ui.get_discovery_rows().iter().take(8))
                 .collect::<Vec<_>>(),
             2 => ui.get_saved_rows().iter().take(24).collect(),
