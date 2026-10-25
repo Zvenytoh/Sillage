@@ -43,7 +43,7 @@ export component PlayerControls inherits Rectangle {
         Text { x: 0; y: 56px; width: 40px; height: 20px; vertical-alignment: center; text: root.elapsed; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
         Rectangle {
             x: 48px; y: 64px; width: parent.width - 96px; height: 4px; border-radius: 2px; background: #4d4d4d;
-            Rectangle { x: 0; y: 0; width: parent.width * clamp(root.progress, 0, 1); height: 4px; border-radius: 2px; background: Theme.accent; }
+            Rectangle { x: 0; y: 0; width: parent.width * clamp(root.progress, 0, 1); height: 4px; border-radius: 2px; background: Theme.text; }
             accessible-role: text;
             accessible-label: "Position de lecture " + root.elapsed + " sur " + root.duration-label + ". Le déplacement dans le morceau est indisponible.";
         }

@@ -47,10 +47,9 @@ export component AppWindow inherits Window {
     in-out property <int> page;
     in-out property <bool> details-open: true;
     in-out property <bool> queue-open;
-    in-out property <bool> favorites-collapsed;
-    in-out property <bool> all-trends;
+    in-out property <bool> library-collapsed;
     private property <bool> small-panel-open;
-    private property <length> rail-width: root.width >= 1600px ? 240px : 216px;
+    private property <length> rail-width: root.library-collapsed ? 72px : root.width >= 1600px ? 240px : 216px;
     private property <bool> panel-visible: (root.details-open && root.width >= 1200px) || root.queue-open || root.small-panel-open;
     private property <length> panel-reserve: root.panel-visible && root.width >= 1200px ? 300px : 0px;
     callback toggle-play(); callback stop(); callback volume-changed(float);
@@ -76,28 +75,28 @@ export component AppWindow inherits Window {
                 padding: 14px; spacing: 6px;
                 HorizontalLayout {
                     height: 72px; padding-left: 12px; spacing: 10px;
-                    Text { text: "Sillage"; color: Theme.text; font-size: 25px; font-weight: 700; vertical-alignment: center; }
+                    if !root.library-collapsed: Text { text: "Sillage"; color: Theme.text; font-size: 25px; font-weight: 700; vertical-alignment: center; }
                 }
-                ActionButton { text: "Accueil"; label: "Accueil"; icon: @image-url("../assets/ui/home.svg"); selected: root.page == 0; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(0); root.load-home(); } }
-                ActionButton { text: "Titres favoris"; label: "Titres favoris"; icon: @image-url("../assets/ui/heart.svg"); selected: root.page == 2; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(2); } }
-                ActionButton { text: "Écoutes récentes"; label: "Écoutes récentes"; icon: @image-url("../assets/ui/history.svg"); selected: root.page == 3; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(3); } }
+                ActionButton { text: root.library-collapsed ? "" : "Accueil"; label: "Accueil"; icon: @image-url("../assets/ui/home.svg"); selected: root.page == 0; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(0); root.load-home(); } }
+                ActionButton { text: root.library-collapsed ? "" : "Titres favoris"; label: "Titres favoris"; icon: @image-url("../assets/ui/heart.svg"); selected: root.page == 2; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(2); } }
+                ActionButton { text: root.library-collapsed ? "" : "Écoutes récentes"; label: "Écoutes récentes"; icon: @image-url("../assets/ui/history.svg"); selected: root.page == 3; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(3); } }
                 Rectangle { height: 20px; }
                 HorizontalLayout {
-                    Text { text: "Votre bibliothèque"; color: Theme.muted; font-size: 12px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
-                    if root.saved-rows.length > 0: ActionButton { icon: root.favorites-collapsed ? @image-url("../assets/ui/chevron-down.svg") : @image-url("../assets/ui/chevron-up.svg"); label: root.favorites-collapsed ? "Afficher les favoris dans la bibliothèque" : "Masquer les favoris dans la bibliothèque"; quiet: true; clicked => { root.favorites-collapsed = !root.favorites-collapsed; } }
+                    if !root.library-collapsed: Text { text: "Votre bibliothèque"; color: Theme.muted; font-size: 12px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+                    ActionButton { icon: @image-url("../assets/ui/library.svg"); label: "Réduire ou agrandir la bibliothèque"; quiet: true; clicked => { root.library-collapsed = !root.library-collapsed; } }
                 }
-                if !root.favorites-collapsed && root.saved-rows.length > 0: TrackList {
+                if !root.library-collapsed && root.saved-rows.length > 0: TrackList {
                     rows: root.saved-rows; actions: false; selected-id: root.selected-id; busy: root.busy;
                     play(row) => { root.navigate(2); root.play-track(row); }
                     request-artwork(row) => { root.request-artwork(row); }
                 }
-                if root.saved-rows.length == 0: Text { text: "Vos titres favoris apparaîtront ici. Ajoutez un morceau avec le cœur."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
+                if !root.library-collapsed && root.saved-rows.length == 0: Text { text: "Vos titres favoris apparaîtront ici. Ajoutez un morceau avec le cœur."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
                 Rectangle { vertical-stretch: 1; }
             }
         }
         Rectangle {
             x: root.rail-width; y: 0; width: root.width - root.rail-width - root.panel-reserve; height: root.height - 88px;
-            background: Theme.surface;
+            background: @linear-gradient(180deg, Theme.wash 0%, Theme.surface 46%, Theme.surface 100%);
             HorizontalLayout {
                 x: 22px; y: 16px; width: parent.width - 44px; height: 42px; spacing: 8px;
                 ActionButton { icon: @image-url("../assets/ui/back.svg"); label: "Retour"; quiet: true; round: true; enabled: root.can-go-back; clicked => { root.nav-back(); } }
@@ -110,12 +109,12 @@ export component AppWindow inherits Window {
             }
             MusicLibrary {
                 x: 0; y: 76px; width: parent.width; height: parent.height - 76px;
-                page: root.page; results: root.results; saved-rows: root.saved-rows; recent-rows: root.recent-rows; all-trends <=> root.all-trends;
+                page: root.page; results: root.results; saved-rows: root.saved-rows; recent-rows: root.recent-rows;
                 trending-rows: root.trending-rows; discovery-rows: root.discovery-rows;
                 home-loading: root.home-loading; home-error: root.home-error; home-source: root.home-source;
                 searching: root.searching; searched: root.searched; query: root.query; search-error: root.search-error; busy: root.busy; selected-id: root.selected-id;
                 play-track(row) => { root.play-track(row); } save-track(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); }
-                request-artwork(row) => { root.request-artwork(row); } refresh-home => { root.refresh-home(); } trends-expanded => { root.refresh-images(); }
+                request-artwork(row) => { root.request-artwork(row); } refresh-home => { root.refresh-home(); }
                 navigate(page) => { root.navigate(page); }
             }
         }

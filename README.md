@@ -60,8 +60,7 @@ The desktop follows the familiar composition of Spotify and YouTube Music:
 black and charcoal surfaces, white type, global search, a useful library on the
 left and a now-playing or queue pane on the right. The rebuilt transport spans
 the bottom. The French home pairs recent listening, France trends and discovery
-with flat ink surfaces, a coral accent, an editorial chart lead and artwork
-that carries the rest of the color.
+with a restrained violet accent; real artwork carries the rest of the color.
 The separate application icon keeps its existing identity.
 
 Keyboard access, visible focus, high contrast, reduced motion, and useful error states
@@ -165,7 +164,7 @@ Network access and decoding run on background workers; audio arrives in bounded
 chunks. The session queue supports selection, previous/next, shuffle, repeat-one
 and natural advancement. Play/Pause, Stop, mute and keyboard-accessible volume
 remain available. The position rail follows consumed decoded audio and is read-only.
-Local-file playback remains in the engine but has no entry point in the main interface.
+A native file picker is optional.
 Local files open paused; selecting an online result starts playback. Standard builds
 write to `target/release/`.
 

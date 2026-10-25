@@ -6,7 +6,6 @@ import { SearchRow } from "model.slint";
 export component SongRow inherits Rectangle {
     in property <SearchRow> track;
     in property <int> number;
-    in property <bool> chart;
     in property <bool> selected;
     in property <bool> busy;
     in property <bool> actions: true;
@@ -22,7 +21,7 @@ export component SongRow inherits Rectangle {
     HorizontalLayout {
         padding: 8px; spacing: 12px;
         if root.number > 0: Text {
-            text: root.chart && root.number < 10 ? "0" + root.number : root.number; width: root.chart ? 38px : 22px; color: root.chart ? Theme.text : Theme.muted; font-family: root.chart ? "Georgia" : "Segoe UI"; font-size: root.chart ? 22px : 13px;
+            text: root.number; width: 22px; color: Theme.muted; font-size: 13px;
             horizontal-alignment: center; vertical-alignment: center;
         }
         Rectangle {

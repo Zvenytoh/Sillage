@@ -212,12 +212,13 @@ fn valid_home(page: &HomePage) -> bool {
 fn display_home(ui: &AppWindow, page: &HomePage, cached: bool) {
     ui.set_trending_rows(crate::view::model(&page.trending));
     ui.set_discovery_rows(crate::view::model(&page.discovery));
-    let source = if cached {
-        format!("{} · sélection enregistrée", page.source)
+    let age = sillage::model::now_ms().saturating_sub(page.fetched_at_unix_ms) / 3600000;
+    let label = if cached {
+        format!("{} · cache de {} h", page.source, age)
     } else {
-        page.source.clone()
+        format!("{} · mis à jour à l'instant", page.source)
     };
-    ui.set_home_source(source.into());
+    ui.set_home_source(label.into());
     ui.set_home_error(page.warning.clone().unwrap_or_default().into());
     ui.invoke_refresh_images();
 }

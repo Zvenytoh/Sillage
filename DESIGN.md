@@ -1,25 +1,25 @@
 ---
 name: Sillage desktop
-description: Editorial French music browsing with a persistent playback bar
+description: Familiar music browsing with a persistent playback bar
 colors:
-  canvas: "#090C0E"
-  sidebar: "#0B0F11"
-  surface: "#111719"
-  elevated: "#242A2C"
-  hover: "#31383A"
-  text: "#F3EEE7"
-  muted: "#B9B9B5"
-  accent: "#F48575"
-  line: "#394043"
+  canvas: "#090A0D"
+  sidebar: "#0B0C10"
+  surface: "#111217"
+  elevated: "#242630"
+  hover: "#2D2B38"
+  text: "#F4F4F7"
+  muted: "#ADB0BD"
+  accent: "#AD91FF"
+  line: "#303030"
   error: "#FFB4AB"
 typography:
   headline:
-    fontFamily: Georgia
-    fontSize: 28px
+    fontFamily: Segoe UI
+    fontSize: 32px
     fontWeight: 700
   title:
-    fontFamily: Georgia
-    fontSize: 24px
+    fontFamily: Segoe UI
+    fontSize: 23px
     fontWeight: 700
   body:
     fontFamily: Segoe UI
@@ -41,7 +41,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.accent}"
-    textColor: "#23110E"
+    textColor: "#19112A"
     height: 40px
   search-field:
     backgroundColor: "{colors.elevated}"
@@ -51,22 +51,6 @@ components:
 ---
 
 # Sillage desktop design
-
-## Editorial home revision — 2026-10-25
-
-The user chose flat ink and coral for this revision. The old violet wash is
-superseded. Georgia gives the home headline, sections and chart numerals a
-distinct reading voice; Segoe UI remains the compact control face. The home
-features the leading French chart track, keeps ranks 2–9 compact, and expands
-the rest of the actual chart on request. Recent cards sit on a connected trail.
-Discovery stays a deliberate 16:9
-video rail; song rows keep square crops. Source metadata remains, while cache
-age no longer appears as interface copy. Recent listening carries the Sillage
-voice. The progression rail uses coral as a simple wake with no extra animation.
-
-The library control now folds only the saved-track list and is absent when
-there is no list. The navigation width and labels remain stable. Native visual
-inspection, resizing, keyboard focus and pointer behavior are still pending.
 
 ## Playback bar geometry refinement
 
@@ -97,17 +81,17 @@ dragging, resizing, maximization and caption placement remain unverified.
 ## Approved French home revision — 2026-10-25
 
 The user selected A Équilibré with violet after comparing mockups, then approved
-implementation. This earlier revision established French navigation,
+implementation. The source now follows that direction: French navigation,
 recent listening cards, compact France trends, new music videos, a large
 now-playing cover and next tracks, and a fixed transport. The original green
-application icon remained separate from the operational accent.
+application icon remains separate from the operational violet accent.
 
-These source dimensions superseded the earlier rebuild notes below: initial
+Current source dimensions supersede the earlier rebuild notes below: initial
 1360×900, minimum 1000×700, sidebar 216/240 px, right pane 300 px reserved from
 1200 px, transport 88 px. Home uses four cards, six when its content exceeds
 1100 px. Artwork keeps a square container, with wide video artwork contained.
-The initial accent was violet #AD91FF, now superseded by the coral palette above.
-The native rendering has not yet been inspected.
+Violet #AD91FF uses ink #19112A; wash #342D45 is restrained. Volume fill and focus
+follow the same accent. The native rendering has not yet been inspected.
 
 The user's subsequent native screenshot exposed automatic centering of artwork
 over captions, stretched section spacing and uneven trend columns. The refinement
@@ -186,7 +170,7 @@ recent listens and square cards prefer square album thumbnails and render within
 square bounds; video discovery remains 16:9. The service prioritizes square
 thumbnail sources closest to the target size. The shuffle and repeat buttons
 indicate their active state in neutral white/gray; the other selected controls
-retain the current accent. `VolumeControl` uses the current accent fill and supports drag,
+retain the violet accent. `VolumeControl` uses the violet fill and supports drag,
 arrows, Home/End and accessibility actions. Ctrl+K/Ctrl+L focus search.
 The in-app About screen is removed; the public README displays Slint's official
 attribution badge instead.
