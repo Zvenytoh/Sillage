@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-25",
+  "capture_utc": "2026-10-25T16:17:07.3773630Z",
+  "input_bytes": 65536,
+  "input_sha256": "E4EB140E226A985BA127E3B7643345AC9C775668B5F7A13432EACECFEA30F9A8",
+  "audio_http_status": 206,
+  "initial_attempt": "mp4_probe_failed_or_incomplete",
+  "correction": "present_captured_prefix_as_unseekable_source",
+  "decode": "verified_prefix",
+  "codec": "aac",
+  "sample_rate": 44100,
+  "channels": 2,
+  "frames_per_channel": 45056,
+  "finite_pcm": true,
+  "decoder_exit_code": 0,
+  "playback": "not_attempted",
+  "account": "not_accessed"
+}

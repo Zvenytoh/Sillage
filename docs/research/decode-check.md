@@ -1,4 +1,29 @@
-# Silent decoding check — prepared, not executed
+# Silent decoding check — successful authorized execution
+
+## Result on 2026-10-25
+
+The user explicitly authorized the silent check. A fresh public capture returned
+65,536 bytes with HTTP 206 at `2026-10-25T16:17:07.3773630Z`. After the source
+declaration correction described below, the decoder exited 0 and produced
+45,056 finite PCM frames per channel at 44,100 Hz, stereo: approximately
+1.022 seconds of decoded samples. This is decoded duration, not a speed measurement.
+
+See the [sanitized result](decode-result-2026-10-25.json). No output device,
+browser or account was opened; no decoded audio file was written. The compressed
+capture remains local and ignored by Git.
+
+### Initial failure and correction
+
+The first decoder invocation failed with `mp4_probe_failed_or_incomplete`.
+Inspection found complete `ftyp` (24 bytes), `moov` (699), `sidx` (8,072) and
+`moof` (1,816) boxes, followed by an intentionally incomplete `mdat`.
+The original Cursor declared the prefix seekable with a complete-file length.
+Symphonia's MP4 reader therefore scanned beyond the available media.
+
+The source now uses Symphonia's `ReadOnlySource` wrapper: an honest declaration
+of progressive, non-seekable input. No bytes, limits, parser errors or success
+criteria were changed. The same captured file then passed the silent check.
+No additional network request was made for the corrected decoder invocation.
 
 ## Purpose and scope
 
@@ -13,10 +38,10 @@ a claim to be the newest release or the final application's version selection.
 The utility uses Rust edition 2024 and declares Rust 1.90; compilation was
 performed with Rust 1.99.1, not with the declared minimum toolchain.
 
-## Prepared procedure
+## Executed procedure
 
-The following functional procedure has **not** been run. The current request
-authorizes preparation, not execution of this new capture/decode check.
+The following capture/decode procedure was explicitly authorized and executed.
+It is not an authorization for audible playback or unrelated tests.
 
 1. Capture at most 64 KiB with the existing public probe's explicit save option:
 
@@ -79,7 +104,9 @@ This temporary override is not an application release-build configuration.
 
 One input-boundary unit test was authored and type-checked, but **not executed**.
 No `cargo test`, sample capture, decoder invocation, browser, player or audio
-output was run during this preparation.
+output was run during the initial preparation. The separately authorized capture
+and decoder execution are recorded above. After the source correction, rustfmt,
+Clippy with warnings denied and the build passed again.
 
 ## API references
 

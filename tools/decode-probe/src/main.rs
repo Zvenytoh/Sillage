@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{CODEC_TYPE_AAC, DecoderOptions};
 use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
+use symphonia::core::io::{MediaSourceStream, ReadOnlySource};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
@@ -37,7 +37,9 @@ fn decode(path: &Path) -> Result<(), &'static str> {
         .read_to_end(&mut bytes)
         .map_err(|_| "input_read_failed")?;
     validate_sample(&bytes)?;
-    let source = MediaSourceStream::new(Box::new(Cursor::new(bytes)), Default::default());
+    // A captured prefix has no complete-file length or seek semantics.
+    let prefix = ReadOnlySource::new(Cursor::new(bytes));
+    let source = MediaSourceStream::new(Box::new(prefix), Default::default());
     let mut hint = Hint::new();
     hint.with_extension("m4a");
     let mut format = symphonia::default::get_probe()

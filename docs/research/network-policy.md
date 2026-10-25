@@ -46,5 +46,6 @@ Exit code: 0. See the [sanitized result](probe-result-2026-10-25.json).
 This authorization covered this public search/prefix check; it does not authorize
 audio playback, browser/account access, or unrelated functional tests.
 
-The [silent decoding check](decode-check.md) is prepared separately. Its new
-capture/save option and decoder invocation have not been executed or validated.
+The [silent decoding check](decode-check.md) was subsequently authorized and
+executed successfully, including the bounded capture/save option. It did not
+open an audio output, browser or account. See its recorded result and limitations.

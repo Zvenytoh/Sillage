@@ -1,7 +1,8 @@
 # Service feasibility — static investigation
 
 Date: 2026-10-25. **M0 remains open.** The explicitly authorized public probe
-succeeded. Audio decoding, playback, browser sign-in, account mutations and
+succeeded. A separately authorized silent check also decoded one bounded AAC
+prefix successfully. Audible playback, browser sign-in, account mutations and
 runtime performance remain unverified.
 
 ## Authorized public probe
@@ -27,11 +28,11 @@ executed or copied into Sillage's application modules.
 | Capability | Source evidence | Sillage conclusion |
 | :--- | :--- | :--- |
 | `public_search` | `ytm.rs:404`, `music:553` and the authorized public probe | One live response contained a video ID; relevance and completeness unverified |
-| `audio_stream` | `ytm.rs:487,507,755` and HTTP 206 in the public probe | Direct URL and 64 KiB retrieval verified once; decoding/playback unverified |
+| `audio_stream` | `ytm.rs:487,507,755`, public probe and silent decoding check | Direct URL, bounded retrieval and approximately 1.022 seconds decoded; audible playback unverified |
 | `account_login` | `auth.rs:234,263,306`: dedicated browser profile, temporary debugging endpoint, YouTube cookies | Not OAuth; requires explicit sign-in and a hardened lifecycle |
 | `personal_library` | `ytm.rs:238,288`: account check and personal playlist browsing | Code path exists; scope, account variants and completeness unverified |
 | `remote_writes` | `ytm.rs:335`, `app.rs:838`: signed-in like/unlike request and rejection event | Likes exist in this commit despite the README's older limitation; not proof of current success |
-| `available_formats` | `ytm.rs:43,755` and itag 140/audio/mp4 observed in the probe | One direct format retrieved; codec decoding, Premium and Opus unverified |
+| `available_formats` | itag 140/audio/mp4 observed; Symphonia decoded AAC at 44.1 kHz stereo | One AAC prefix verified; full-track integrity, Premium and Opus unverified |
 
 ## Catalog and playback are separate
 
@@ -92,9 +93,9 @@ Lyrics and Discord endpoints are outside the initial Sillage scope.
    formats or expired sessions explicitly, without a hidden WebView fallback.
 3. Do not promise account parity, higher bitrates or remote playlist editing.
 4. Complete the transport policy before any live service experiment.
-5. Public search, direct stream acquisition and bounded retrieval now have one
-   authorized live observation. M0 still needs separately authorized decoding
-   and playback evidence. Authentication additionally needs an explicit sign-in
+5. Public search, direct stream acquisition, bounded retrieval and silent decoding
+   now have authorized observations. M0 still needs separately authorized audible
+   playback evidence. Authentication additionally needs an explicit sign-in
    decision; no user account was accessed in this investigation.
 
 ## Source links
