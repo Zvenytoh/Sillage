@@ -4,6 +4,15 @@ Date : 2026-10-25.
 
 ## Reprise active — accueil français violet
 
+- Demande suivante : retirer la barre de titre Windows et intégrer uniquement
+  réduire, agrandir/restaurer, fermer, dans cet ordre. Source :
+  `ui/window-controls.slint`, `ui/app.slint`, quatre SVG. Déplacement et
+  redimensionnement via Slint existant ; aucune dépendance ni logique Rust
+  supplémentaire. Aucun contrôle du bureau ni lancement pour cette révision.
+  Formatage, Clippy toutes cibles sans avertissement et Release --bins réussis.
+  Raccourci Bureau vers `dist/Sillage-frameless-preview.exe`, anciens binaires
+  conservés ; preuve dans `docs/qa/integrated-window-build-results-2026-10-25.json`.
+
 - Dernier retour : capture native fournie par l'utilisateur. Correction ciblée
   du centrage implicite des pochettes, du vide entre sections, des largeurs de
   colonnes et du placeholder. Découverte 16:9, 4/6/8 cartes selon largeur.

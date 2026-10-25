@@ -52,6 +52,21 @@ components:
 
 # Sillage desktop design
 
+## Window controls — explicit user revision
+
+The main window has no native title bar (`no-frame: true`). Three integrated
+46×32 px caption controls occupy the top-right corner: minimize, maximize/restore,
+close, in Windows order. Close uses a red hover state; all controls expose French
+accessible labels and keyboard activation. The maximize icon follows the actual
+Slint `maximized` property. No separate title strip is drawn.
+
+The branding region and the empty top edge use `WindowMoveArea` for native drag;
+double-click toggles maximization. A 6 px resize border is enabled when restored.
+The right pane reserves room above its heading for the buttons. Close uses the
+existing window-close path, preserving About-window cleanup and state flushing.
+This supersedes the earlier instruction to keep the Windows frame. Runtime
+dragging, resizing, maximization and caption placement remain unverified.
+
 ## Approved French home revision — 2026-10-25
 
 The user selected A Équilibré with violet after comparing mockups, then approved

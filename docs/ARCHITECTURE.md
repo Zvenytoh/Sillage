@@ -5,6 +5,14 @@ français sont implémentés. Le contrôle visuel natif de la nouvelle révision
 la reprise de file, les comptes et les mises à jour restent à faire.
 La compilation ne valide ni le rendu ni le comportement audio.
 
+## Fenêtre sans barre système
+
+`ui/window-controls.slint` contient les trois contrôles intégrés. `AppWindow`
+utilise `no-frame`, `resize-border-width`, `minimized`, `maximized` et `close()`
+de Slint ; `WindowMoveArea` délègue le déplacement au backend Winit. Aucun code
+Win32 unsafe, hook, polling ou dépendance supplémentaire ajouté. La fermeture
+conserve le callback existant et la sauvegarde de session après `ui.run()`.
+
 ## Révision accueil français
 
 `catalog.rs` remplace `search.rs` : un worker pour recherche/accueil, une requête

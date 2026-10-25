@@ -1,0 +1,32 @@
+import { Theme } from "theme.slint";
+
+component CaptionButton inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> close-button;
+    callback clicked();
+    width: 46px; height: 32px;
+    background: pointer.pressed ? (root.close-button ? #a82418 : #ffffff20) : pointer.has-hover ? (root.close-button ? #c42b1c : #ffffff12) : transparent;
+    border-width: keyboard.has-focus ? 1px : 0px;
+    border-color: Theme.accent;
+    forward-focus: keyboard;
+    accessible-role: button; accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    Image { x: 18px; y: 11px; width: 10px; height: 10px; source: root.icon; colorize: Theme.text; }
+    pointer := TouchArea { clicked => { root.clicked(); } }
+    keyboard := FocusScope { width: 0;
+        key-pressed(event) => {
+            if event.text == Key.Space || event.text == Key.Return { root.clicked(); return accept; }
+            return reject;
+        }
+    }
+}
+
+export component WindowControls inherits Rectangle {
+    in property <bool> maximized;
+    callback minimize(); callback toggle-maximize(); callback close-window();
+    width: 138px; height: 32px;
+    CaptionButton { x: 0; y: 0; icon: @image-url("../assets/ui/window-minimize.svg"); label: "Réduire"; clicked => { root.minimize(); } }
+    CaptionButton { x: 46px; y: 0; icon: root.maximized ? @image-url("../assets/ui/window-restore.svg") : @image-url("../assets/ui/window-maximize.svg"); label: root.maximized ? "Restaurer" : "Agrandir"; clicked => { root.toggle-maximize(); } }
+    CaptionButton { x: 92px; y: 0; icon: @image-url("../assets/ui/window-close.svg"); label: "Fermer"; close-button: true; clicked => { root.close-window(); } }
+}

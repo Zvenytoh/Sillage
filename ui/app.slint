@@ -5,6 +5,7 @@ import { PlayerControls } from "player.slint";
 import { MusicLibrary } from "library.slint";
 import { TrackList } from "tracks.slint";
 import { SearchRow } from "model.slint";
+import { WindowControls } from "window-controls.slint";
 export { SearchRow } from "model.slint";
 
 export component AboutWindow inherits Window {
@@ -18,6 +19,8 @@ export component AboutWindow inherits Window {
 
 export component AppWindow inherits Window {
     title: "Sillage"; icon: @image-url("../assets/sillage.png");
+    no-frame: true;
+    resize-border-width: root.maximized ? 0px : 6px;
     preferred-width: 1360px; preferred-height: 900px; min-width: 1000px; min-height: 700px;
     background: Theme.canvas; default-font-family: "Segoe UI"; default-font-size: 14px;
     init => { Palette.color-scheme = ColorScheme.dark; }
@@ -130,7 +133,7 @@ export component AppWindow inherits Window {
         if root.panel-visible: Rectangle {
             x: root.width - 300px; y: 0; width: 300px; height: root.height - 88px; background: Theme.sidebar;
             VerticalLayout {
-                padding: 18px; spacing: 16px;
+                padding-left: 18px; padding-right: 18px; padding-top: 44px; padding-bottom: 18px; spacing: 16px;
                 HorizontalLayout {
                     Text { text: root.queue-open ? "File d'attente" : "En cours de lecture"; color: Theme.text; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
                     ActionButton { icon: @image-url("../assets/ui/panel.svg"); label: "Masquer le panneau"; quiet: true; clicked => { root.queue-open = false; root.details-open = false; root.small-panel-open = false; } }
@@ -159,6 +162,20 @@ export component AppWindow inherits Window {
                     ActionButton { text: "Vider la file"; enabled: root.queue-rows.length > 0; clicked => { root.clear-queue(); } }
                 }
             }
+        }
+        WindowMoveArea {
+            x: 0; y: 0; width: root.rail-width; height: 96px;
+            TouchArea { double-clicked => { root.maximized = !root.maximized; } }
+        }
+        WindowMoveArea {
+            x: root.rail-width; y: 0; width: root.width - root.rail-width - 138px; height: 14px;
+            TouchArea { double-clicked => { root.maximized = !root.maximized; } }
+        }
+        WindowControls {
+            x: root.width - self.width; y: 0; maximized: root.maximized;
+            minimize => { root.minimized = true; }
+            toggle-maximize => { root.maximized = !root.maximized; }
+            close-window => { root.close(); }
         }
         if root.error-message != "": Rectangle {
             x: root.rail-width + 20px; y: root.height - 102px - self.height; width: root.width - root.rail-width - 40px;
