@@ -17,7 +17,7 @@ conserve le callback existant et la sauvegarde de session après `ui.run()`.
 
 `catalog.rs` remplace `search.rs` : un worker pour recherche/accueil, une requête
 active et une attente remplaçable. La navigation conserve les modèles déjà reçus ;
-une nouvelle demande annule la précédente. Cache normalisé `home-fr.json` ≤2 Mio,
+une nouvelle demande annule la précédente. Cache normalisé `home-fr-square-v2.json` ≤2 Mio,
 fraîcheur six heures, actualisation explicite, ancien contenu conservé sur panne.
 `Client::home` suit la playlist « Les 20 clips tendance France » retournée par
 `FEmusic_charts`, puis les nouveaux clips de `FEmusic_explore` (24 maximum).
@@ -35,7 +35,8 @@ v2 écrit au prochain changement ; limites 500 favoris/200 récents/2 Mio.
 actif. Même identifiant dans toutes les vues, sans annulation lors d'une recherche.
 Référence publique validée ou miniature i.ytimg.com du même videoId ; aucun
 homonyme. Réception ≤512 Kio, décodage ≤2048²/16 Mio, réduction 384 px (visible)
-ou 512 px (courant). Cache encodé ≤128 Mio/1024 fichiers ; buffers conservés
+ou 512 px (courant). Les anciens fichiers de cache sont conservés ; les nouveaux
+sont maintenant dans `artwork-v2/`, ≤128 Mio/1024 fichiers ; buffers conservés
 ≤32 Mio, références évincées aussi dans les vues. Textures GPU non mesurées.
 `cache.rs` fournit lectures bornées et écritures temporaires atomiques.
 

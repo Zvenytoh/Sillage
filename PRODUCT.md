@@ -5,8 +5,8 @@ Initial target: Windows 11 x64. Application code is MIT, chosen by the user.
 Rust + Slint; no WebView, embedded Chromium, Electron or frontend JavaScript.
 The user's priorities are responsiveness, low resource use and a polished music UI.
 Symphonia through rodio handles audio. Performance budgets remain targets,
-not measured results. Keyboard accessibility, useful errors and accessible
-AboutSlint attribution are preserved requirements. Local file opening is removed
+not measured results. Keyboard accessibility, useful errors and Slint attribution
+are preserved. Local file opening is removed
 from the app interface; its separate diagnostic tools remain available.
 Online playback starts only after the user chooses a track.
 

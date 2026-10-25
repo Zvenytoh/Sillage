@@ -10,6 +10,7 @@ export component ActionButton inherits Rectangle {
     in property <bool> round;
     in property <bool> quiet;
     in property <bool> active;
+    in property <bool> active-neutral;
     in property <bool> accented;
     out property <bool> has-focus: focus.has-focus;
     callback clicked();
@@ -38,7 +39,7 @@ export component ActionButton inherits Rectangle {
             Image {
                 source: root.icon; width: 20px; height: 20px;
                 y: (parent.height - self.height) / 2;
-                colorize: root.accented ? Theme.accent-ink : root.filled ? Theme.canvas : root.selected || root.active ? Theme.accent : touch.has-hover ? Theme.text : Theme.muted;
+                colorize: root.accented ? Theme.accent-ink : root.filled ? Theme.canvas : root.selected || (root.active && !root.active-neutral) ? Theme.accent : root.active-neutral && root.active ? Theme.text : touch.has-hover ? Theme.text : Theme.muted;
             }
         }
         if root.text != "": Text {
@@ -64,6 +65,7 @@ export component ActionButton inherits Rectangle {
 
 export component Cover inherits Rectangle {
     in property <image> artwork;
+    in property <bool> square;
     background: Theme.elevated;
     border-radius: 4px;
     clip: true;
@@ -73,7 +75,7 @@ export component Cover inherits Rectangle {
         height: root.artwork.width > 0 ? parent.height : 24px;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        image-fit: root.artwork.width > root.artwork.height * 1.3 ? contain : cover;
+        image-fit: root.square ? cover : (root.artwork.width > root.artwork.height * 1.3 ? contain : cover);
         colorize: root.artwork.width > 0 ? transparent : Theme.muted;
     }
 }

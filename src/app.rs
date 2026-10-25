@@ -2,7 +2,6 @@ use crate::catalog::Catalog;
 use sillage::model::PlaybackState;
 use sillage::playback::{Playback, PlaybackCommand, PlaybackEvent, PlaybackEventKind};
 use slint::ComponentHandle;
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, mpsc};
@@ -178,7 +177,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
-    let about: Rc<RefCell<Option<AboutWindow>>> = Rc::new(RefCell::new(None));
     {
         let weak = ui.as_weak();
         let playback = playback.clone();
@@ -208,28 +206,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         ui.on_volume_changed(move |value| {
             if let Some(ui) = weak.upgrade() {
                 command(&ui, &playback, PlaybackCommand::SetVolume(value));
-            }
-        });
-    }
-    {
-        let weak = ui.as_weak();
-        let about = about.clone();
-        ui.on_show_about(move || {
-            if about.borrow().is_none() {
-                match AboutWindow::new() {
-                    Ok(window) => *about.borrow_mut() = Some(window),
-                    Err(_) => {
-                        if let Some(ui) = weak.upgrade() {
-                            ui.set_error_message(
-                                "La fenêtre À propos ne peut pas être ouverte.".into(),
-                            );
-                        }
-                        return;
-                    }
-                }
-            }
-            if let Some(window) = about.borrow().as_ref() {
-                let _ = window.show();
             }
         });
     }
@@ -263,22 +239,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     slint::Timer::single_shot(Duration::ZERO, move || {
         let _ = start_on_timer.send(());
     });
-    {
-        let about = about.clone();
-        ui.window().on_close_requested(move || {
-            let window = about.borrow().as_ref().map(ComponentHandle::as_weak);
-            if let Some(window) = window.and_then(|window| window.upgrade()) {
-                let _ = window.hide();
-            }
-            slint::CloseRequestResponse::HideWindow
-        });
-    }
     ui.invoke_load_home();
     let result = ui.run();
     let _ = start.send(());
     session.flush();
     drop(ui);
-    drop(about);
     drop(playback);
     drop(debounce);
     drop(search);

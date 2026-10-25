@@ -26,7 +26,7 @@ export component SongRow inherits Rectangle {
         }
         Rectangle {
             width: 40px; horizontal-stretch: 0;
-            Cover { artwork: root.track.artwork; width: 40px; height: 40px; y: (parent.height - 40px) / 2; }
+            Cover { artwork: root.track.artwork; square: true; width: 40px; height: 40px; x: 0; y: (parent.height - 40px) / 2; }
         }
         VerticalLayout {
             alignment: center; spacing: 4px; horizontal-stretch: 1;

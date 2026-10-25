@@ -156,7 +156,8 @@ through the cover, title or volume controls.
 
 Panel/button corners are 8 px, covers 4 px and results 6 px. Search and compact
 transport buttons are rounded. Icons are original local SVGs on a 24-unit grid,
-using a consistent 1.8-unit stroke or solid transport shapes.
+using a consistent 1.8-unit stroke or solid transport shapes. The sidebar wordmark
+is plain white text without the separate violet brand glyph.
 
 ## Components
 
@@ -164,16 +165,20 @@ using a consistent 1.8-unit stroke or solid transport shapes.
 Space/Enter activation and an accessible label/action. SVGs are centered in
 explicit height-filling containers, including transport and search. `SearchField` uses a
 single-line TextInput, text selection colors and a clear action. `Cover` clips
-real artwork, using a music icon when it is missing. `GenreTile` starts a
-real search on click or keyboard activation; its title is a genre, not a fake album.
-`VolumeControl` is monochrome and supports drag, arrows, Home/End and accessibility
-actions. Ctrl+K/Ctrl+L focus search. AboutSlint uses the dark palette.
+real artwork, using a music icon when it is missing. Song rows, saved songs,
+recent listens and square cards prefer square album thumbnails and render within
+square bounds; video discovery remains 16:9. The service prioritizes square
+thumbnail sources closest to the target size. The shuffle and repeat buttons
+indicate their active state in neutral white/gray; the other selected controls
+retain the violet accent. `VolumeControl` uses the violet fill and supports drag,
+arrows, Home/End and accessibility actions. Ctrl+K/Ctrl+L focus search.
+The in-app About screen is removed; the public README displays Slint's official
+attribution badge instead.
 
-Pochettes load after text results, on a dedicated worker. Up to 32 covers per
-search, each resized to at most 320×320 RGBA. Encoded input ≤512 KiB; source
-dimensions ≤2048×2048; decoder allocation limit 16 MiB. No disk cache or timer.
-New searches cancel old artwork without waiting for its HTTP call. Library and
-queue retain at most 24 covers each. Source and GPU allocations are separate.
+Pochettes load after text results, on a dedicated worker. File input ≤512 KiB;
+decoded dimensions ≤2048×2048; allocation ≤16 MiB. The decoded cache is ≤32 MiB;
+the encoded disk cache is ≤128 MiB/1024 files. New searches do not cancel images
+for items still visible or currently playing. GPU allocations are measured separately.
 The library stores at most 500 songs on this PC; the session queue is capped at
 500. Saved songs are not a synced YouTube account library. Shuffle, repeat-one,
 previous/next and queue selection are wired to playback. Progress counts decoded

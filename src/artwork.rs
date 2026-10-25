@@ -54,8 +54,10 @@ impl Artwork {
                     };
                     state.active = Some(job.track.id.clone());
                     drop(state);
-                    let path = crate::cache::directory()
-                        .map(|root| root.join("artwork").join(format!("{}.img", job.track.id)));
+                    let path = crate::cache::directory().map(|root| {
+                        root.join("artwork-v2")
+                            .join(format!("{}.img", job.track.id))
+                    });
                     let cached = path
                         .as_ref()
                         .and_then(|path| crate::cache::read(path, 512 * 1024).ok())

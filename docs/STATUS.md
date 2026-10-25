@@ -4,6 +4,17 @@ Date : 2026-10-25.
 
 ## Reprise active — accueil français violet
 
+- Dernière demande : supprimer « À propos », « Votre musique, sur ce PC » et
+  le pictogramme coloré près de Sillage ; neutraliser la surbrillance violette
+  des bascules Lecture aléatoire/Répéter et assurer des vignettes carrées de la
+  bonne source. Interface dépouillée, bouton actif signalé en neutre. Le bouton
+  Fermer utilise désormais la fermeture réelle de la fenêtre pour déclencher la
+  sauvegarde normale. Attribution Slint conservée dans le README public.
+  Formatage, Clippy sans avertissement et build Release réussis. Nouvelle
+  préversion `dist/Sillage-sidebar-preview.exe`, raccourci Bureau actualisé et
+  relu. Aucun lancement ni contrôle de l'écran. Empreinte :
+  `docs/qa/sidebar-squares-build-results-2026-10-25.json`.
+
 - Dernière demande : alignement/détails du lecteur inférieur et bug visuel du
   volume. Capture utilisateur examinée : remplissage violet centré dans sa
   piste, durée tronquée, groupes verticaux décalés. Correction dans

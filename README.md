@@ -227,3 +227,5 @@ Google or YouTube. Their names and trademarks belong to their owners. The applic
 code is licensed under [MIT](LICENSE). Dependencies and vendored development skills
 retain their own licenses; see [third-party notes](THIRD_PARTY.md). The application icon is an AI-generated raster asset;
 its source and inspection notes are documented separately.
+
+[![Made with Slint](https://raw.githubusercontent.com/slint-ui/slint/master/logo/MadeWithSlint-logo-whitebg.png)](https://slint.dev)

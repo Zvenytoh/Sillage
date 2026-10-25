@@ -78,8 +78,8 @@ impl Catalog {
                             }
                         }
                         Request::Home { force } => {
-                            let path =
-                                crate::cache::directory().map(|root| root.join("home-fr.json"));
+                            let path = crate::cache::directory()
+                                .map(|root| root.join("home-fr-square-v2.json"));
                             let cached = path
                                 .as_ref()
                                 .and_then(|path| crate::cache::read(path, 2 * 1024 * 1024).ok())

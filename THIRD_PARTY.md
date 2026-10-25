@@ -8,9 +8,10 @@ Third-party Rust sources are downloaded by Cargo, not vendored here.
 
 ## Application dependencies
 
-- Slint 1.18.1: the Royalty-free Desktop/Mobile/Web 2.0 path is selected. An
-  accessible AboutSlint widget is implemented; runtime access needs checking
-  before binary distribution.
+- Slint 1.18.1: the Royalty-free Desktop/Mobile/Web 2.0 path is selected. The user
+  requested removal of the in-app About screen. Sillage uses the license's public
+  webpage attribution option through the official Slint badge in the GitHub README;
+  see the acknowledgement at the bottom of README.md.
 - rodio 0.23.0: MIT OR Apache-2.0; CPAL 0.18.2: Apache-2.0. Retain their applicable notices.
 - Symphonia 0.5.5: MPL-2.0; retain covered-source notices and applicable source availability obligations.
 - windows-rs 0.62.2: MIT OR Apache-2.0; retain applicable notices.

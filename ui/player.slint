@@ -30,7 +30,7 @@ export component PlayerControls inherits Rectangle {
         x: (parent.width - self.width) / 2; y: 0; width: min(620px, parent.width * 0.42); height: 88px;
         HorizontalLayout {
             x: (parent.width - 232px) / 2; y: 8px; width: 232px; height: 40px; spacing: 8px;
-            ActionButton { icon: @image-url("../assets/ui/shuffle.svg"); label: "Lecture aléatoire"; quiet: true; round: true; active: root.shuffle; clicked => { root.toggle-shuffle(); } }
+            ActionButton { icon: @image-url("../assets/ui/shuffle.svg"); label: "Lecture aléatoire"; quiet: true; round: true; active: root.shuffle; active-neutral: true; clicked => { root.toggle-shuffle(); } }
             ActionButton { icon: @image-url("../assets/ui/previous.svg"); label: "Titre précédent"; quiet: true; round: true; enabled: root.can-previous && !root.busy; clicked => { root.previous(); } }
             ActionButton {
                 icon: root.playing ? @image-url("../assets/ui/pause.svg") : @image-url("../assets/ui/play.svg");
@@ -38,7 +38,7 @@ export component PlayerControls inherits Rectangle {
                 enabled: root.loaded && !root.busy; clicked => { root.toggle-play(); }
             }
             ActionButton { icon: @image-url("../assets/ui/next.svg"); label: "Titre suivant"; quiet: true; round: true; enabled: root.can-next && !root.busy; clicked => { root.next(); } }
-            ActionButton { icon: @image-url("../assets/ui/repeat.svg"); label: "Répéter ce titre"; quiet: true; round: true; active: root.repeat; clicked => { root.toggle-repeat(); } }
+            ActionButton { icon: @image-url("../assets/ui/repeat.svg"); label: "Répéter ce titre"; quiet: true; round: true; active: root.repeat; active-neutral: true; clicked => { root.toggle-repeat(); } }
         }
         Text { x: 0; y: 56px; width: 40px; height: 20px; vertical-alignment: center; text: root.elapsed; color: Theme.muted; font-size: 11px; horizontal-alignment: center; }
         Rectangle {

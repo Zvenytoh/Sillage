@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-25",
+  "revision": "Sidebar cleanup, neutral playback toggles and square artwork",
+  "checks": [
+    {
+      "exitCode": 0,
+      "command": "cargo fmt --all -- --check"
+    },
+    {
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "exitCode": 0,
+      "slintWarnings": 0
+    },
+    {
+      "exitCode": 0,
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target"
+    }
+  ],
+  "artifact": {
+    "bytes": 17910784,
+    "sha256": "C50A0D0913787CB2096250D2C251F2E62B058FEFCBA7B7F03FB13193E728585D",
+    "path": "dist/Sillage-sidebar-preview.exe"
+  },
+  "shortcut": {
+    "name": "Sillage.lnk",
+    "targetVerified": true
+  },
+  "correctedRevisionLaunched": false,
+  "newRenderedVisualQA": false,
+  "desktopControlled": false,
+  "audioPlayed": false,
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "buildScheduling": {
+    "priority": "BelowNormal",
+    "jobs": 2
+  }
+}

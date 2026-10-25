@@ -138,7 +138,14 @@ fn track(node: &Value) -> Option<Track> {
                 .as_str()
                 .is_some_and(|url| url.len() <= 4096 && super::valid_artwork_url(url))
         })
-        .min_by_key(|thumbnail| thumbnail["width"].as_u64().unwrap_or(0).abs_diff(512))
+        .min_by_key(|thumbnail| {
+            let width = thumbnail["width"].as_u64().unwrap_or(0);
+            let height = thumbnail["height"].as_u64().unwrap_or(0);
+            let aspect_error =
+                width.abs_diff(height).saturating_mul(512) / width.max(height).max(1);
+            let size_error = width.abs_diff(512) + height.abs_diff(512);
+            (aspect_error, size_error)
+        })
         .and_then(|thumbnail| thumbnail["url"].as_str())
         .map(str::to_owned),
     })

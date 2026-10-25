@@ -27,6 +27,8 @@ or to pin Sillage blindly to that dependency graph.
 The [Slint royalty-free terms](https://slint.dev/terms-and-conditions) provide
 an attribution choice: an accessible AboutSlint widget or a discoverable public
 webpage badge. A proposed Sillage implementation would use an About screen.
+The user later requested removal of the About screen; the public README now uses
+the license's official badge asset, satisfying the selected webpage attribution option.
 The user subsequently selected MIT for original application code. Dependencies
 retain their own licenses; MIT does not relicense their covered code.
 

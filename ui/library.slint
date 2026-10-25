@@ -25,7 +25,7 @@ component MusicCard inherits Rectangle {
     background: hover.has-hover ? #ffffff08 : transparent;
     private property <length> art-size: self.width;
     private property <length> art-height: root.wide ? root.art-size * 9 / 16 : root.art-size;
-    Cover { x: 0; y: 0; width: root.art-size; height: root.art-height; artwork: root.track.artwork; }
+    Cover { x: 0; y: 0; width: root.art-size; height: root.art-height; artwork: root.track.artwork; square: !root.wide; }
     Rectangle { x: 0; y: root.art-height + 10px; width: parent.width; height: 38px; clip: true;
         Text { x: 0; y: 0; width: parent.width; height: 38px; text: root.track.title; color: root.selected ? Theme.accent : Theme.text; font-size: 14px; font-weight: 600; wrap: word-wrap; overflow: elide; }
     }

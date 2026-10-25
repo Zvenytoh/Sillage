@@ -1,4 +1,4 @@
-import { AboutSlint, Palette, ScrollView } from "std-widgets.slint";
+import { Palette, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { ActionButton, SearchField, Cover } from "components.slint";
 import { PlayerControls } from "player.slint";
@@ -7,15 +7,6 @@ import { TrackList } from "tracks.slint";
 import { SearchRow } from "model.slint";
 import { WindowControls } from "window-controls.slint";
 export { SearchRow } from "model.slint";
-
-export component AboutWindow inherits Window {
-    title: "À propos de Sillage"; width: 400px; height: 260px; background: Theme.surface;
-    VerticalLayout { padding: 24px; spacing: 12px;
-        Text { text: "Sillage"; color: Theme.text; font-size: 24px; font-weight: 700; }
-        Text { text: "Lecteur musical natif · Version 0.1.0 · MIT"; color: Theme.muted; }
-        AboutSlint { }
-    }
-}
 
 export component AppWindow inherits Window {
     title: "Sillage"; icon: @image-url("../assets/sillage.png");
@@ -61,7 +52,7 @@ export component AppWindow inherits Window {
     private property <length> rail-width: root.library-collapsed ? 72px : root.width >= 1600px ? 240px : 216px;
     private property <bool> panel-visible: (root.details-open && root.width >= 1200px) || root.queue-open || root.small-panel-open;
     private property <length> panel-reserve: root.panel-visible && root.width >= 1200px ? 300px : 0px;
-    callback toggle-play(); callback stop(); callback volume-changed(float); callback show-about();
+    callback toggle-play(); callback stop(); callback volume-changed(float);
     callback query-edited(string); callback search(); callback play-track(SearchRow);
     callback save-track(SearchRow); callback save-current(); callback enqueue(SearchRow);
     callback play-queued(SearchRow); callback clear-queue();
@@ -84,7 +75,6 @@ export component AppWindow inherits Window {
                 padding: 14px; spacing: 6px;
                 HorizontalLayout {
                     height: 72px; padding-left: 12px; spacing: 10px;
-                    Rectangle { width: 28px; Image { source: @image-url("../assets/ui/sillage.svg"); width: 28px; height: 28px; y: (parent.height - 28px)/2; colorize: Theme.accent; } }
                     if !root.library-collapsed: Text { text: "Sillage"; color: Theme.text; font-size: 25px; font-weight: 700; vertical-alignment: center; }
                 }
                 ActionButton { text: root.library-collapsed ? "" : "Accueil"; label: "Accueil"; icon: @image-url("../assets/ui/home.svg"); selected: root.page == 0; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(0); root.load-home(); } }
@@ -102,8 +92,6 @@ export component AppWindow inherits Window {
                 }
                 if !root.library-collapsed && root.saved-rows.length == 0: Text { text: "Vos titres favoris apparaîtront ici. Ajoutez un morceau avec le cœur."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
                 Rectangle { vertical-stretch: 1; }
-                if !root.library-collapsed: Text { text: "Votre musique, sur ce PC"; color: Theme.muted; font-size: 11px; }
-                ActionButton { text: root.library-collapsed ? "" : "À propos"; label: "À propos de Sillage"; icon: @image-url("../assets/ui/info.svg"); quiet: true; horizontal-stretch: 1; clicked => { root.show-about(); } }
             }
         }
         Rectangle {
@@ -130,7 +118,7 @@ export component AppWindow inherits Window {
                 navigate(page) => { root.navigate(page); }
             }
         }
-        if root.panel-visible: Rectangle {
+            if root.panel-visible: Rectangle {
             x: root.width - 300px; y: 0; width: 300px; height: root.height - 88px; background: Theme.sidebar;
             VerticalLayout {
                 padding-left: 18px; padding-right: 18px; padding-top: 44px; padding-bottom: 18px; spacing: 16px;
