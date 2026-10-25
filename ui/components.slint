@@ -1,0 +1,108 @@
+import { Theme } from "theme.slint";
+
+export component ActionButton inherits Rectangle {
+    in property <string> text;
+    in property <string> label: root.text;
+    in property <image> icon;
+    in property <bool> enabled: true;
+    in property <bool> selected;
+    in property <bool> filled;
+    in property <bool> round;
+    in property <bool> quiet;
+    callback clicked();
+    min-width: root.text == "" ? 40px : 96px;
+    min-height: 40px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    border-radius: root.round ? self.height / 2 : 8px;
+    background: root.filled ? Theme.text : touch.has-hover && root.enabled ? Theme.hover : root.selected ? Theme.elevated : root.quiet ? transparent : Theme.elevated;
+    border-width: focus.has-focus ? 2px : 0px;
+    border-color: Theme.accent;
+    opacity: root.enabled ? 1 : 0.35;
+    forward-focus: focus;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    HorizontalLayout {
+        padding-left: root.text == "" ? 10px : 14px;
+        padding-right: root.text == "" ? 10px : 14px;
+        spacing: 12px;
+        alignment: root.text == "" ? center : start;
+        if root.icon.width > 0: Image {
+            source: root.icon; width: 20px; height: 20px;
+            colorize: root.filled ? Theme.canvas : root.selected ? Theme.text : Theme.muted;
+        }
+        if root.text != "": Text {
+            text: root.text; color: root.filled ? Theme.canvas : Theme.text;
+            font-size: 14px; font-weight: 600; vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled; mouse-cursor: pointer;
+        clicked => { focus.focus(); root.clicked(); }
+    }
+    focus := FocusScope {
+        width: 0; enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == Key.Space || event.text == Key.Return {
+                root.clicked(); return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+export component Cover inherits Rectangle {
+    in property <image> artwork;
+    background: Theme.elevated;
+    border-radius: 4px;
+    clip: true;
+    Image {
+        source: root.artwork.width > 0 ? root.artwork : @image-url("../assets/ui/music.svg");
+        width: root.artwork.width > 0 ? parent.width : 24px;
+        height: root.artwork.width > 0 ? parent.height : 24px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        image-fit: cover;
+        colorize: root.artwork.width > 0 ? transparent : Theme.muted;
+    }
+}
+
+export component SearchField inherits Rectangle {
+    in-out property <string> text;
+    callback edited(string);
+    callback accepted();
+    height: 48px;
+    border-radius: 24px;
+    background: input.has-focus ? #303030 : Theme.elevated;
+    border-width: input.has-focus ? 2px : 1px;
+    border-color: input.has-focus ? Theme.text : transparent;
+    forward-focus: input;
+    HorizontalLayout {
+        padding-left: 18px; padding-right: 10px; spacing: 12px;
+        Image { source: @image-url("../assets/ui/search.svg"); width: 22px; height: 22px; colorize: Theme.muted; }
+        Rectangle {
+            horizontal-stretch: 1;
+            Text {
+                text: "What do you want to listen to?"; color: Theme.muted;
+                font-size: 14px; vertical-alignment: center;
+                visible: root.text == "";
+            }
+            input := TextInput {
+                text <=> root.text; color: Theme.text; font-size: 14px;
+                single-line: true; vertical-alignment: center;
+                selection-background-color: Theme.accent;
+                selection-foreground-color: Theme.canvas;
+                accessible-label: "Search YouTube Music";
+                edited => { root.edited(self.text); }
+                accepted => { root.accepted(); }
+            }
+        }
+        if root.text != "": ActionButton {
+            icon: @image-url("../assets/ui/close.svg"); label: "Clear search";
+            quiet: true; round: true;
+            clicked => { root.text = ""; root.edited(""); input.focus(); }
+        }
+    }
+}

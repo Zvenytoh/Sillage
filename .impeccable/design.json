@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25",
+  "title": "Sillage desktop",
+  "extensions": {
+    "shadows": [],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Documentation translation of the native Slint action; not a runtime screenshot.",
+      "html": "<button class=\"ds-action\">Search</button>",
+      "css": ".ds-action{background:#f5f5f5;color:#080808;font:600 14px 'Segoe UI',sans-serif;min-height:40px;padding:0 14px;border:0;border-radius:20px}.ds-action:hover{background:#fff}.ds-action:focus-visible{outline:2px solid #dfff61;outline-offset:2px}.ds-action:disabled{opacity:.35}"
+    },
+    {
+      "name": "Search field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "Documentation translation of SearchField in ui/components.slint.",
+      "html": "<input class=\"ds-search\" placeholder=\"What do you want to listen to?\" aria-label=\"Search YouTube Music\">",
+      "css": ".ds-search{background:#242424;color:#f5f5f5;font:14px 'Segoe UI',sans-serif;height:48px;padding:0 18px;border:2px solid transparent;border-radius:24px}.ds-search::placeholder{color:#b3b3b3}.ds-search:focus-visible{outline:none;border-color:#f5f5f5;background:#303030}.ds-search::selection{background:#dfff61;color:#080808}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Familiar music browsing",
+    "overview": "Dark desktop composition requested by the user, referencing Spotify and YouTube Music. Source implementation is documented; rendered QA remains pending.",
+    "keyCharacteristics": ["Dark tonal surfaces", "Compact artwork-led results", "Persistent full-width playback"],
+    "rules": [],
+    "dos": ["Keep functional controls and keyboard focus visible"],
+    "donts": ["Invent library content or unsupported controls", "Treat compilation as visual validation"]
+  }
+}

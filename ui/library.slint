@@ -1,53 +1,103 @@
-import { Button, LineEdit, ListView } from "std-widgets.slint";
+import { ListView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
+import { ActionButton, Cover } from "components.slint";
 import { SearchRow } from "model.slint";
 
-export component MusicSearch inherits Rectangle {
-    in-out property <string> query;
-    in property <[SearchRow]> results;
-    in property <bool> searching;
-    in property <bool> searched;
-    in property <bool> busy;
-    in property <string> search-error;
-    callback query-edited(string);
-    callback search();
-    callback play-track(SearchRow);
+component DiscoveryTile inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+    in property <color> tint;
+    callback clicked();
+    min-height: 128px;
+    border-radius: 8px;
+    background: root.tint;
+    border-width: tile-focus.has-focus ? 2px : 0px;
+    border-color: Theme.accent;
+    forward-focus: tile-focus;
+    accessible-role: button;
+    accessible-label: "Search " + root.title;
+    accessible-action-default => { root.clicked(); }
     VerticalLayout {
-        spacing: 12px;
-        HorizontalLayout {
-            spacing: 12px;
-            LineEdit {
-                text <=> root.query;
-                placeholder-text: "Search for a song or artist";
-                accessible-label: "Search YouTube Music";
-                edited(text) => { root.query-edited(text); }
-                accepted => { root.search(); }
-            }
-            Button { text: "Search"; clicked => { root.search(); } }
+        padding: 18px; spacing: 8px;
+        Text { text: root.title; font-size: 24px; font-weight: 700; color: Theme.text; }
+        Text { text: root.description; font-size: 12px; color: Theme.text; wrap: word-wrap; }
+        Rectangle { vertical-stretch: 1; }
+        Image { source: @image-url("../assets/ui/search.svg"); width: 20px; height: 20px; colorize: Theme.text; }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { tile-focus.focus(); root.clicked(); } }
+    tile-focus := FocusScope {
+        width: 0;
+        key-pressed(event) => {
+            if event.text == Key.Space || event.text == Key.Return { root.clicked(); return accept; }
+            return reject;
         }
-        Text { text: "Searching YouTube Music…"; color: Theme.muted; visible: root.searching; }
-        Text { text: root.search-error; color: Theme.error; wrap: word-wrap; visible: root.search-error != ""; }
-        if !root.searched && !root.searching && root.results.length == 0: Text {
-            text: "Find your next listen."; font-size: 28px; color: Theme.muted; vertical-alignment: center; vertical-stretch: 1;
+    }
+}
+
+export component MusicSearch inherits Rectangle {
+    in property <[SearchRow]> results;
+    in property <bool> searching; in property <bool> searched; in property <bool> busy;
+    in property <bool> playing; in property <string> selected-id;
+    in property <string> search-error; in property <string> query;
+    callback play-track(SearchRow); callback explore(string);
+    VerticalLayout {
+        spacing: 20px;
+        Text {
+            text: root.searching ? "Searching…" : root.searched ? "Search results" : "Find your next favorite.";
+            color: Theme.text; font-size: 30px; font-weight: 700;
+        }
+        if root.search-error != "": Text {
+            text: root.search-error; color: Theme.error; wrap: word-wrap;
+        }
+        if !root.searched && !root.searching && root.search-error == "": VerticalLayout {
+            spacing: 24px;
+            Text { text: "Songs, artists, and a sound for every mood."; color: Theme.muted; font-size: 14px; }
+            Rectangle { height: 12px; }
+            Text { text: "Start with a sound"; color: Theme.text; font-size: 20px; font-weight: 700; }
+            HorizontalLayout {
+                spacing: 16px;
+                DiscoveryTile { title: "Electronic"; description: "Find your rhythm"; tint: #46326c; clicked => { root.explore("electronic music"); } }
+                DiscoveryTile { title: "Jazz"; description: "Take the long way home"; tint: #704020; clicked => { root.explore("jazz"); } }
+                DiscoveryTile { title: "Chill"; description: "Turn the world down"; tint: #245350; clicked => { root.explore("chill music"); } }
+            }
+            Rectangle { vertical-stretch: 1; }
         }
         if root.searched && !root.searching && root.results.length == 0 && root.search-error == "": Text {
-            text: "No playable results found. Try another search."; color: Theme.muted; vertical-alignment: center; vertical-stretch: 1;
+            text: "No songs found. Try another artist or title."; color: Theme.muted;
         }
-        if root.results.length > 0: ListView {
-            for row in root.results: Rectangle {
-                height: 72px;
-                width: parent.width;
-                Rectangle { y: parent.height - 1px; height: 1px; width: parent.width; background: Theme.line; }
-                HorizontalLayout {
-                    padding: 12px;
-                    spacing: 12px;
-                    VerticalLayout {
-                        Text { text: row.title; color: Theme.pine; font-size: 16px; overflow: elide; }
-                        Text { text: row.artist; color: Theme.muted; font-size: 13px; overflow: elide; }
+        if root.results.length > 0: VerticalLayout {
+            spacing: 8px;
+            HorizontalLayout {
+                padding-left: 12px; padding-right: 12px;
+                Text { text: "Song"; color: Theme.muted; font-size: 12px; horizontal-stretch: 1; }
+                Text { text: root.results.length + " results"; color: Theme.muted; font-size: 12px; }
+            }
+            Rectangle { height: 1px; background: Theme.line; }
+            ListView {
+                for row in root.results: Rectangle {
+                    height: 68px; width: parent.width; border-radius: 6px;
+                    background: root.selected-id == row.id ? Theme.elevated : hover.has-hover ? #222222 : transparent;
+                    hover := TouchArea { }
+                    HorizontalLayout {
+                        padding: 8px; spacing: 14px;
+                        Cover { artwork: row.artwork; width: 48px; height: 48px; }
+                        VerticalLayout {
+                            alignment: center; spacing: 4px; horizontal-stretch: 1;
+                            Text {
+                                text: row.title; color: root.selected-id == row.id ? Theme.accent : Theme.text;
+                                font-size: 14px; font-weight: 600; overflow: elide; min-width: 0px;
+                            }
+                            Text { text: row.artist == "" ? "Song · YouTube Music" : row.artist; color: Theme.muted; font-size: 12px; overflow: elide; min-width: 0px; }
+                        }
+                        ActionButton {
+                            icon: @image-url("../assets/ui/play.svg");
+                            label: "Play " + row.title; quiet: true; round: true; enabled: !root.busy;
+                            clicked => { root.play-track(row); }
+                        }
                     }
-                    Button { text: "Play"; accessible-label: "Play " + row.title; enabled: !root.busy; clicked => { root.play-track(row); } }
                 }
             }
         }
+        if root.searching || root.search-error != "" || (root.searched && root.results.length == 0): Rectangle { vertical-stretch: 1; }
     }
 }

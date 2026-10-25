@@ -16,6 +16,7 @@ Third-party Rust sources are downloaded by Cargo, not vendored here.
 - windows-rs 0.62.2: MIT OR Apache-2.0; retain applicable notices.
 - ureq 3.5.0: MIT OR Apache-2.0; rustls provides TLS with bundled web PKI roots.
 - url 2.5.8 and serde_json 1.0.154: MIT OR Apache-2.0.
+- image 0.25.10: MIT OR Apache-2.0; used to bound and resize remote artwork on a worker.
 
 Cargo.lock records exact transitive versions. A full redistribution notice bundle
 is still required before publishing an executable/installer. No Segoe UI font file

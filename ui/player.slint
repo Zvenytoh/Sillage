@@ -1,27 +1,53 @@
-import { Button, Slider } from "std-widgets.slint";
+import { Slider } from "std-widgets.slint";
 import { Theme } from "theme.slint";
+import { ActionButton, Cover } from "components.slint";
 
 export component PlayerControls inherits Rectangle {
-    in property <bool> loaded;
-    in property <bool> playing;
-    in property <bool> busy;
-    in property <string> status;
+    in property <bool> loaded; in property <bool> playing; in property <bool> busy;
+    in property <string> status; in property <string> title; in property <string> artist;
+    in property <image> artwork; in property <string> duration-label;
     in-out property <float> volume: 25;
-    callback toggle-play();
-    callback stop();
-    callback volume-changed(float);
-    background: #e7ebdf;
-    VerticalLayout {
-        padding: 24px;
-        spacing: 14px;
-        Text { text: root.status; color: Theme.muted; font-size: 14px; }
+    callback toggle-play(); callback stop(); callback volume-changed(float);
+    background: Theme.canvas;
+    Rectangle { height: 1px; background: Theme.line; width: parent.width; }
+    HorizontalLayout {
+        padding-left: 24px; padding-right: 24px; padding-top: 16px; padding-bottom: 16px; spacing: 24px;
         HorizontalLayout {
-            spacing: 12px;
-            Button { text: root.playing ? "Pause" : "Play"; enabled: root.loaded && !root.busy; clicked => { root.toggle-play(); } }
-            Button { text: "Stop"; enabled: root.loaded || root.busy; clicked => { root.stop(); } }
-            Rectangle { horizontal-stretch: 1; }
-            Text { text: "Volume"; color: Theme.pine; vertical-alignment: center; }
-            Slider { width: 150px; minimum: 0; maximum: 100; value <=> root.volume; enabled: !root.busy; accessible-label: "Volume"; changed(value) => { root.volume-changed(value / 100); } }
+            spacing: 14px; horizontal-stretch: 1;
+            Cover { artwork: root.artwork; width: 56px; height: 56px; }
+            VerticalLayout {
+                alignment: center; spacing: 5px;
+                Text { text: root.title; color: Theme.text; font-weight: 600; font-size: 14px; overflow: elide; min-width: 0px; }
+                Text { text: root.artist; color: Theme.muted; font-size: 12px; overflow: elide; min-width: 0px; }
+            }
+        }
+        VerticalLayout {
+            min-width: 180px; horizontal-stretch: 1; alignment: center; spacing: 5px;
+            HorizontalLayout {
+                alignment: center; spacing: 14px;
+                ActionButton {
+                    icon: root.playing ? @image-url("../assets/ui/pause.svg") : @image-url("../assets/ui/play.svg");
+                    label: root.playing ? "Pause" : "Play"; filled: true; round: true;
+                    width: 40px; height: 40px; enabled: root.loaded && !root.busy;
+                    clicked => { root.toggle-play(); }
+                }
+                ActionButton {
+                    icon: @image-url("../assets/ui/stop.svg"); label: root.busy ? "Cancel loading" : "Stop";
+                    quiet: true; round: true; enabled: root.loaded || root.busy;
+                    clicked => { root.stop(); }
+                }
+            }
+            Text { text: root.status; color: Theme.muted; font-size: 11px; horizontal-alignment: center; overflow: elide; }
+        }
+        HorizontalLayout {
+            alignment: end; spacing: 10px; horizontal-stretch: 1;
+            Text { text: root.duration-label; color: Theme.muted; font-size: 12px; vertical-alignment: center; }
+            Image { source: @image-url("../assets/ui/volume.svg"); width: 20px; height: 20px; colorize: Theme.muted; }
+            Slider {
+                width: 100px; minimum: 0; maximum: 100; value <=> root.volume;
+                enabled: !root.busy; accessible-label: "Volume";
+                changed(value) => { root.volume-changed(value / 100); }
+            }
         }
     }
 }

@@ -110,6 +110,45 @@ fn bytes(
 }
 
 impl Transport {
+    pub fn artwork(&self, raw: &str, cancel: &Cancellation) -> Result<Vec<u8>, ServiceError> {
+        cancel.check()?;
+        let url = Url::parse(raw).map_err(|_| ServiceError::DestinationRejected)?;
+        if url.scheme() != "https"
+            || url.port_or_known_default() != Some(443)
+            || !url.username().is_empty()
+            || url.password().is_some()
+            || url.fragment().is_some()
+            || !matches!(
+                url.domain(),
+                Some(
+                    "lh3.googleusercontent.com" | "lh3.ggpht.com" | "yt3.ggpht.com" | "i.ytimg.com"
+                )
+            )
+        {
+            return Err(ServiceError::DestinationRejected);
+        }
+        let response = self
+            .agent
+            .get(url.as_str())
+            .call()
+            .map_err(|_| ServiceError::Network)?;
+        if response.status().as_u16() != 200 {
+            return Err(ServiceError::Network);
+        }
+        let mime = response
+            .headers()
+            .get("Content-Type")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("");
+        if !matches!(
+            mime.split(';').next(),
+            Some("image/jpeg" | "image/png" | "image/webp")
+        ) {
+            return Err(ServiceError::InvalidResponse);
+        }
+        bytes(response.into_body().into_reader(), 512 * 1024, cancel)
+    }
+
     pub fn json(
         &self,
         endpoint: &'static str,

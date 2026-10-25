@@ -45,9 +45,9 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64) {
             let label = match duration {
                 Some(duration) => {
                     let seconds = duration.as_secs();
-                    format!("{}:{:02} · Audio", seconds / 60, seconds % 60)
+                    format!("{}:{:02}", seconds / 60, seconds % 60)
                 }
-                None => "Audio · Length unavailable".into(),
+                None => String::new(),
             };
             ui.set_duration_label(label.into());
             ui.set_loaded(true);
@@ -122,7 +122,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     title: row.title.to_string(),
                     artists: vec![row.artist.to_string()],
                     duration_ms: None,
+                    thumbnail: None,
                 };
+                ui.set_selected_id(row.id.clone());
+                ui.set_track_artist(row.artist.clone());
+                ui.set_track_artwork(row.artwork.clone());
                 command(&ui, &playback, PlaybackCommand::OpenRemote(track));
             }
         });
@@ -136,7 +140,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 return;
             };
             match file_dialog::open_audio() {
-                Ok(Some(path)) => command(&ui, &playback, PlaybackCommand::OpenLocal(path)),
+                Ok(Some(path)) => {
+                    ui.set_selected_id("".into());
+                    ui.set_track_artist("Local file".into());
+                    ui.set_track_artwork(slint::Image::default());
+                    command(&ui, &playback, PlaybackCommand::OpenLocal(path));
+                }
                 Ok(None) => {}
                 Err(message) => ui.set_error_message(message.into()),
             }

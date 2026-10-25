@@ -80,6 +80,10 @@ impl ResolvedStream {
 }
 
 impl Client {
+    pub fn artwork(&self, url: &str, cancel: &Cancellation) -> Result<Vec<u8>, ServiceError> {
+        self.transport.artwork(url, cancel)
+    }
+
     pub fn search(&self, query: &str, cancel: &Cancellation) -> Result<Vec<Track>, ServiceError> {
         if query.trim().is_empty() || query.chars().count() > 120 {
             return Err(ServiceError::InvalidResponse);

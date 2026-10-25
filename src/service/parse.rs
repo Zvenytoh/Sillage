@@ -51,6 +51,17 @@ fn track(node: &Value) -> Option<Track> {
         title,
         artists,
         duration_ms: None,
+        thumbnail: [
+            "/thumbnail/musicThumbnailRenderer/thumbnail/thumbnails",
+            "/thumbnailRenderer/musicThumbnailRenderer/thumbnail/thumbnails",
+            "/thumbnail/thumbnails",
+        ]
+        .iter()
+        .filter_map(|path| node.pointer(path).and_then(Value::as_array))
+        .flatten()
+        .filter_map(|thumbnail| thumbnail["url"].as_str())
+        .find(|url| url.len() <= 4096)
+        .map(str::to_owned),
     })
 }
 

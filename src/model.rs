@@ -14,6 +14,7 @@ pub struct Track {
     pub title: String,
     pub artists: Vec<String>,
     pub duration_ms: Option<u64>,
+    pub thumbnail: Option<String>,
 }
 
 impl PlaybackState {

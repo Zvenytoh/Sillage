@@ -1,7 +1,8 @@
 # Architecture cible
 
-Le socle local M1 et la tranche recherche publique → lecture progressive sont
-implémentés. Stockage, pochettes, navigation et mises à jour restent à construire.
+Le socle local M1, la tranche recherche publique → lecture progressive et les
+pochettes bornées des premiers résultats sont implémentés. Stockage, cache durable,
+navigation et mises à jour restent à construire.
 Le lecteur n'a pas été lancé ; son rendu et son comportement audio ne sont pas validés.
 
 ## Flux principal
@@ -66,10 +67,17 @@ audio ne fait ni réseau, ni décodage, ni attente du producteur ; il remplit un
 sous-alimentation par du silence. Ces bornes de code ne sont pas des mesures mémoire.
 
 Stop, remplacement de source et fermeture invalident les tâches précédentes.
+Le worker de recherche affiche d'abord les métadonnées, puis reçoit et réduit
+jusqu'à 32 pochettes. `image` décode hors UI avec bornes de dimensions/allocation ;
+les pixels RGBA traversent la notification Slint, la création d'Image reste sur
+le thread UI. Maximum 192×192×4 octets par pochette conservée (textures GPU à part).
+Les hôtes image sont une liste exacte distincte de l'audio ; aucune redirection.
+
 Une requête bloquée peut attendre son délai réseau avant de se terminer ;
 l'annulation n'interrompt pas l'appel système immédiatement. Un échec nécessite
 une reprise manuelle. Pas de compte, cookies, pagination, seek ou renouvellement
-automatique des URL dans cette tranche.
+automatique des URL dans cette tranche. L'UI sombre suit `DESIGN.md` ; le lecteur
+fixe pleine largeur reste indépendant du contenu de recherche.
 
 ## Décisions
 

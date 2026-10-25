@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-25",
+  "feature": "Dark desktop redesign with bounded artwork",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target",
+      "exitCode": 0
+    }
+  ],
+  "artifact": {
+    "path": "dist/Sillage-dark-preview.exe",
+    "bytes": 16435200,
+    "sha256": "00DEC21B5805A0F58B1DBD000E743DA407F1F7CCDD4102BC0316C7001C45263B"
+  },
+  "applicationLaunched": false,
+  "renderedVisualQAPerformed": false,
+  "artworkNetworkValidated": false,
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "audioPlayed": false,
+  "performanceMeasured": false
+}

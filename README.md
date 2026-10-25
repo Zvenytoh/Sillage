@@ -54,9 +54,10 @@ They will be described as supported only after the actual service flow works.
 
 ### A little restraint goes a long way
 
-The visual direction pairs deep pine with a bright citron accent, generous spacing,
-readable type, and album artwork given room to breathe. Movement should help you
-understand an action, then settle.
+The desktop follows the familiar composition of Spotify and YouTube Music:
+near-black surfaces, clear white type, compact artwork-led results, search at the
+top and a persistent playback bar across the bottom. Citron marks selection and
+keyboard focus. The application icon keeps its pine-and-citron identity.
 
 Keyboard access, visible focus, high contrast, reduced motion, and useful error states
 belong in the first release. Quiet operation matters as much as the first impression.
@@ -158,8 +159,12 @@ chunks. Play/Pause, Stop and volume remain available. A native file picker is op
 Local files open paused; selecting an online result starts playback. Standard builds
 write to `target/release/`.
 
+Artwork loads progressively after text results, with up to 32 bounded thumbnails
+per search and a neutral fallback when unavailable. The refreshed interface is
+implemented; actual rendering, DPI behavior and artwork retrieval still need checking.
+
 This first connection supports direct public AAC/M4A streams. Album/artist pages,
-pagination, artwork, queue management, seeking, automatic network recovery and account
+pagination, queue management, seeking, automatic network recovery and account
 sign-in are still pending. Unsupported tracks report an error with a manual retry.
 
 The [output check](docs/research/audio-output-check.md) and
