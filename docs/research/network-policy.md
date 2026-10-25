@@ -33,8 +33,12 @@ The probe uses audited reference client values. It may be refused or become stal
 A failure is recorded as an experiment outcome; it must not trigger unreviewed
 client impersonation fallbacks or relaxed network validation.
 
-Prepared command, **not yet executed**:
+Command explicitly authorized and executed successfully on 2026-10-25:
 
 ```powershell
 pwsh -NoProfile -File scripts/probe-service.ps1 -Query Bach
 ```
+
+Exit code: 0. See the [sanitized result](probe-result-2026-10-25.json).
+This authorization covered this public search/prefix check; it does not authorize
+audio playback, browser/account access, or unrelated functional tests.

@@ -1,0 +1,11 @@
+{
+  "utc": "2026-10-25T16:00:33.8669631Z",
+  "public_search": "video_id_found",
+  "stream_resolution": "direct_itag_140",
+  "audio_prefix_bytes": 65536,
+  "audio_http_status": 206,
+  "container_prefix": "ftyp",
+  "decode": "not_attempted",
+  "playback": "not_attempted",
+  "account": "not_accessed"
+}
