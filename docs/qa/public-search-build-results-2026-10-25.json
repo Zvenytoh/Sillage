@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-25",
+  "feature": "Public search and progressive playback",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "target": "x86_64-pc-windows-gnu",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target",
+      "exitCode": 0
+    }
+  ],
+  "artifact": {
+    "path": "dist/Sillage-online-preview.exe",
+    "bytes": 15917568,
+    "sha256": "AED9B87207998F54B1C274AA3AF82F37E82B3C5A6B63EDBEE0DC5C4B1D8A6D99"
+  },
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "applicationLaunched": false,
+  "audioPlayed": false,
+  "integratedServiceFlowExecuted": false,
+  "performanceMeasured": false
+}

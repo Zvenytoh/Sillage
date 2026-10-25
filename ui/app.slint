@@ -1,6 +1,9 @@
 import { Button, AboutSlint } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { PlayerControls } from "player.slint";
+import { MusicSearch } from "library.slint";
+import { SearchRow } from "model.slint";
+export { SearchRow } from "model.slint";
 
 export component AboutWindow inherits Window {
     title: "About Sillage";
@@ -23,9 +26,14 @@ export component AppWindow inherits Window {
     min-height: 560px;
     background: Theme.paper;
     default-font-family: "Segoe UI";
-    in property <string> track-title: "Your next track starts here.";
-    in property <string> duration-label: "MP3 · M4A · WAV · FLAC · Ogg Vorbis";
-    in property <string> status: "Choose an audio file to begin.";
+    in property <string> track-title: "No track selected";
+    in property <string> duration-label: "Choose a result to listen.";
+    in property <string> status: "Search for music to begin.";
+    in-out property <string> query;
+    in property <[SearchRow]> results;
+    in property <bool> searching;
+    in property <bool> searched;
+    in property <string> search-error;
     in property <string> error-message;
     in property <bool> loaded;
     in property <bool> playing;
@@ -36,6 +44,9 @@ export component AppWindow inherits Window {
     callback stop();
     callback volume-changed(float);
     callback show-about();
+    callback query-edited(string);
+    callback search();
+    callback play-track(SearchRow);
 
     HorizontalLayout {
         spacing: 0;
@@ -49,7 +60,7 @@ export component AppWindow inherits Window {
                 Text { text: "Sillage"; color: Theme.paper; font-size: 27px; font-weight: 700; }
                 Text { text: "Music in motion."; color: #bfcebf; font-size: 13px; }
                 Rectangle { height: 1px; background: #3b5043; }
-                Text { text: "Local listening"; color: Theme.citron; font-size: 15px; font-weight: 600; }
+                Text { text: "YouTube Music"; color: Theme.citron; font-size: 15px; font-weight: 600; }
                 Rectangle { vertical-stretch: 1; }
                 Button { text: "About Sillage"; clicked => { root.show-about(); } }
             }
@@ -57,19 +68,35 @@ export component AppWindow inherits Window {
         VerticalLayout {
             spacing: 0;
             VerticalLayout {
-                padding: 40px;
-                spacing: 22px;
+                padding: 28px;
+                spacing: 16px;
                 HorizontalLayout {
                     Text { text: "Your music, close at hand."; color: Theme.pine; font-size: 23px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
-                    Button { text: "Open audio file"; enabled: !root.busy; clicked => { root.open-file(); } }
+                    Button { text: "Local file…"; enabled: !root.busy; clicked => { root.open-file(); } }
                 }
                 Rectangle { height: 1px; background: Theme.line; }
-                Rectangle { vertical-stretch: 1; }
-                Image { source: @image-url("../assets/sillage.png"); width: 144px; height: 144px; }
-                Text { text: root.track-title; color: Theme.pine; font-size: 30px; font-weight: 650; wrap: word-wrap; overflow: elide; }
-                Text { text: root.duration-label; color: Theme.muted; font-size: 14px; }
+                MusicSearch {
+                    vertical-stretch: 1;
+                    query <=> root.query;
+                    results: root.results;
+                    searching: root.searching;
+                    searched: root.searched;
+                    search-error: root.search-error;
+                    busy: root.busy;
+                    query-edited(text) => { root.query-edited(text); }
+                    search => { root.search(); }
+                    play-track(row) => { root.play-track(row); }
+                }
+                Rectangle { height: 1px; background: Theme.line; }
+                HorizontalLayout {
+                    spacing: 16px;
+                    Image { source: @image-url("../assets/sillage.png"); width: 48px; height: 48px; }
+                    VerticalLayout {
+                        Text { text: root.track-title; color: Theme.pine; font-size: 19px; font-weight: 600; overflow: elide; min-width: 0px; }
+                        Text { text: root.duration-label; color: Theme.muted; font-size: 13px; }
+                    }
+                }
                 Text { text: root.error-message; color: Theme.error; font-size: 14px; wrap: word-wrap; visible: root.error-message != ""; }
-                Rectangle { vertical-stretch: 1; }
             }
             PlayerControls {
                 height: 128px;

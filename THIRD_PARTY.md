@@ -14,6 +14,8 @@ Third-party Rust sources are downloaded by Cargo, not vendored here.
 - rodio 0.23.0: MIT OR Apache-2.0; CPAL 0.18.2: Apache-2.0. Retain their applicable notices.
 - Symphonia 0.5.5: MPL-2.0; retain covered-source notices and applicable source availability obligations.
 - windows-rs 0.62.2: MIT OR Apache-2.0; retain applicable notices.
+- ureq 3.5.0: MIT OR Apache-2.0; rustls provides TLS with bundled web PKI roots.
+- url 2.5.8 and serde_json 1.0.154: MIT OR Apache-2.0.
 
 Cargo.lock records exact transitive versions. A full redistribution notice bundle
 is still required before publishing an executable/installer. No Segoe UI font file

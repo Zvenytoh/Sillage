@@ -8,11 +8,19 @@ pub enum PlaybackState {
     Ended,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Track {
+    pub id: String,
+    pub title: String,
+    pub artists: Vec<String>,
+    pub duration_ms: Option<u64>,
+}
+
 impl PlaybackState {
     pub fn label(self) -> &'static str {
         match self {
-            Self::Empty => "Choose an audio file to begin.",
-            Self::Loading => "Opening your file…",
+            Self::Empty => "Search for music to begin.",
+            Self::Loading => "Preparing audio…",
             Self::Paused => "Ready when you are.",
             Self::Playing => "Playing",
             Self::Stopped => "Stopped",

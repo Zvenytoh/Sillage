@@ -16,11 +16,12 @@
 </p>
 
 > [!NOTE]
-> **Early development.** The first native local-file player is implemented in source;
-> its interface and audio behavior still require runtime validation. Public search,
-> bounded stream retrieval and a silent AAC decoding experiment have succeeded.
-> There is no packaged public release yet. Catalog/account features below remain
-> planned; performance figures are engineering targets.
+> **Early development.** Native public search and progressive playback are now
+> connected in source: find a track, press Play, and stream it without a local file.
+> The development build compiles; this integrated flow still needs runtime validation.
+> Earlier standalone public retrieval and silent AAC decoding checks succeeded.
+> Browsing, accounts and a packaged public release remain ahead; performance figures
+> are engineering targets.
 
 ## The idea
 
@@ -112,7 +113,7 @@ Each milestone has a working deliverable and a condition for moving forward.
 | **Foundation** | Architecture, roadmap, agent workflow, application artwork | Available in this repository |
 | **M0 · Prove the connection** | Establish search, stream access, formats, and account feasibility | Public retrieval and silent decoding checked; output/account work remains |
 | **M1 · Make it play** | A native local-file player with a coherent UI and playback state | First implementation; runtime QA pending |
-| **M2 · Bring the catalog in** | Public search, browsing, streaming, queue recovery, and Windows controls | Planned |
+| **M2 · Bring the catalog in** | Public search, browsing, streaming, queue recovery, and Windows controls | Search and progressive playback implemented; integrated runtime QA pending |
 | **M3 · Make it personal** | Protected sign-in and the personal library capabilities proven in M0 | Planned |
 | **M4 · Make it hold up** | Visual refinement, accessibility, measured performance, installation, and updates | Planned |
 | **V1 · Release with evidence** | A documented capability matrix and checks behind every published promise | Planned |
@@ -142,7 +143,7 @@ You can [watch the repository](https://github.com/Zvenytoh/Sillage) for progress
 or [open an issue](https://github.com/Zvenytoh/Sillage/issues) with a concrete
 listening scenario, accessibility need, or service compatibility concern.
 
-### Build the local-file preview
+### Build the development preview
 
 Use Windows 11 x64, Rust 1.92 or newer, and a working Windows linker/toolchain.
 
@@ -150,12 +151,20 @@ Use Windows 11 x64, Rust 1.92 or newer, and a working Windows linker/toolchain.
 cargo build --locked --release --bin sillage
 ```
 
-The development preview has a native file picker, Play/Pause, Stop and volume.
-It has no YouTube catalog or account connection yet. Opening prepares the file
-paused; Play opens the output device. Standard builds write to `target/release/`.
+The preview opens on a public YouTube Music search. Search waits for a 200 ms pause
+in typing, displays up to 100 distinct tracks, and lets you start a result directly.
+Network access and decoding run on background workers; audio arrives in bounded
+chunks. Play/Pause, Stop and volume remain available. A native file picker is optional.
+Local files open paused; selecting an online result starts playback. Standard builds
+write to `target/release/`.
+
+This first connection supports direct public AAC/M4A streams. Album/artist pages,
+pagination, artwork, queue management, seeking, automatic network recovery and account
+sign-in are still pending. Unsupported tracks report an error with a manual retry.
 
 The [output check](docs/research/audio-output-check.md) and
-[M1 record](docs/qa/m1-local-player.md) distinguish implementation, compilation
+[M1 record](docs/qa/m1-local-player.md) and
+[connected-preview record](docs/qa/public-search-playback.md) distinguish implementation, compilation
 and runtime verification. The agent has not launched this preview or used desktop
 automation. There is no packaged release yet.
 

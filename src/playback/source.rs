@@ -25,15 +25,37 @@ pub(super) fn prepare(path: &Path) -> Result<Prepared, &'static str> {
     {
         return Err("Choose a regular audio file.");
     }
-    let mut decoder = Decoder::try_from(file)
+    let decoder = Decoder::try_from(file)
         .map_err(|_| "This file could not be decoded. Try MP3, M4A, WAV, FLAC or Ogg Vorbis.")?;
+    prepare_decoder(Box::new(decoder), Arc::new(AtomicBool::new(false)))
+}
+
+pub(super) fn prepare_online(
+    client: &crate::service::Client,
+    stream: crate::service::ResolvedStream,
+    cancel: crate::service::Cancellation,
+) -> Result<Prepared, &'static str> {
+    let reader = client.input(stream, cancel);
+    let failed = reader.failure_flag();
+    let decoder = Decoder::builder()
+        .with_data(reader)
+        .with_hint("m4a")
+        .with_seekable(false)
+        .build()
+        .map_err(|_| "The audio stream could not be decoded. Try another track.")?;
+    prepare_decoder(Box::new(decoder), failed)
+}
+
+fn prepare_decoder(
+    mut decoder: Box<dyn Source + Send>,
+    failed: Arc<AtomicBool>,
+) -> Result<Prepared, &'static str> {
     let channels = decoder.channels();
     let rate = decoder.sample_rate();
     if channels.get() > 8 || rate.get() > 192_000 {
         return Err("This audio format exceeds the local player's supported dimensions.");
     }
     let duration = decoder.total_duration();
-    let failed = Arc::new(AtomicBool::new(false));
     let decoder_failed = failed.clone();
     let (sender, receiver) = mpsc::sync_channel(16);
     let worker = std::thread::Builder::new()

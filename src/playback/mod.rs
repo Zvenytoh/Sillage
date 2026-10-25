@@ -1,17 +1,20 @@
 use crate::model::PlaybackState;
+use crate::model::Track;
+use crate::service::{Cancellation, Client};
 mod source;
 
 use rodio::{DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, SyncSender};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 pub enum PlaybackCommand {
     OpenLocal(PathBuf),
+    OpenRemote(Track),
     Play,
     Pause,
     Stop,
@@ -56,10 +59,16 @@ impl fmt::Display for PlaybackError {
 impl std::error::Error for PlaybackError {}
 
 pub struct Playback {
-    sender: Option<SyncSender<PlaybackCommand>>,
+    sender: Option<SyncSender<Job>>,
     shutdown: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
     callbacks: Arc<CallbackState>,
+    active: Mutex<Cancellation>,
+}
+
+struct Job {
+    command: PlaybackCommand,
+    cancel: Cancellation,
 }
 
 #[derive(Default)]
@@ -73,7 +82,7 @@ pub struct CallbackEvents(Arc<CallbackState>);
 
 impl Playback {
     pub fn spawn(events: SyncSender<PlaybackEvent>) -> Result<Self, PlaybackError> {
-        let (sender, receiver) = mpsc::sync_channel(32);
+        let (sender, receiver) = mpsc::sync_channel::<Job>(32);
         let shutdown = Arc::new(AtomicBool::new(false));
         let stopping = shutdown.clone();
         let callbacks = Arc::new(CallbackState::default());
@@ -87,7 +96,7 @@ impl Playback {
                     if stopping.load(Ordering::Acquire) {
                         break;
                     }
-                    audio.apply(command);
+                    audio.apply(command.command, command.cancel);
                 }
             })
             .map_err(|_| PlaybackError::Unavailable)?;
@@ -96,6 +105,7 @@ impl Playback {
             shutdown,
             worker: Some(worker),
             callbacks,
+            active: Mutex::new(Cancellation::default()),
         })
     }
 
@@ -109,14 +119,32 @@ impl Playback {
         {
             return Err(PlaybackError::InvalidVolume);
         }
+        let affects_source = matches!(
+            &command,
+            PlaybackCommand::OpenLocal(_) | PlaybackCommand::OpenRemote(_) | PlaybackCommand::Stop
+        );
+        let mut active = self.active.lock().map_err(|_| PlaybackError::Unavailable)?;
+        let cancel = if affects_source {
+            Cancellation::default()
+        } else {
+            active.clone()
+        };
         self.sender
             .as_ref()
             .ok_or(PlaybackError::Unavailable)?
-            .try_send(command)
+            .try_send(Job {
+                command,
+                cancel: cancel.clone(),
+            })
             .map_err(|error| match error {
                 mpsc::TrySendError::Full(_) => PlaybackError::Busy,
                 mpsc::TrySendError::Disconnected(_) => PlaybackError::Unavailable,
-            })
+            })?;
+        if affects_source {
+            active.cancel();
+            *active = cancel;
+        }
+        Ok(())
     }
 }
 
@@ -127,7 +155,7 @@ impl CallbackEvents {
             (&self.0.ended, PlaybackEventKind::Ended),
             (
                 &self.0.failed,
-                PlaybackEventKind::Failed("Audio output failed. Stop playback and try again."),
+                PlaybackEventKind::Failed("Audio processing failed. Stop playback and try again."),
             ),
         ] {
             let encoded = slot.swap(0, Ordering::AcqRel);
@@ -145,6 +173,9 @@ impl CallbackEvents {
 impl Drop for Playback {
     fn drop(&mut self) {
         self.shutdown.store(true, Ordering::Release);
+        if let Ok(active) = self.active.lock() {
+            active.cancel();
+        }
         self.sender.take();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
@@ -165,6 +196,8 @@ struct Worker {
     callbacks: Arc<CallbackState>,
     decoder: Option<JoinHandle<()>>,
     source_failed: Arc<AtomicBool>,
+    remote: Option<Track>,
+    client: Client,
 }
 
 impl Worker {
@@ -180,6 +213,8 @@ impl Worker {
             callbacks,
             decoder: None,
             source_failed: Arc::new(AtomicBool::new(false)),
+            remote: None,
+            client: Client::default(),
         }
     }
 
@@ -211,13 +246,73 @@ impl Worker {
         self.source_failed = prepared.failed;
     }
 
-    fn apply(&mut self, command: PlaybackCommand) {
+    fn online(
+        &self,
+        cancel: &Cancellation,
+    ) -> Result<(source::Prepared, Option<Duration>), &'static str> {
+        let track = self.remote.as_ref().ok_or("Choose a track first.")?;
+        let stream = self
+            .client
+            .resolve(&track.id, cancel)
+            .map_err(|_| "This track could not be opened. Try another result or retry Play.")?;
+        let duration = stream.duration();
+        Ok((
+            source::prepare_online(&self.client, stream, cancel.clone())?,
+            duration,
+        ))
+    }
+
+    fn apply(&mut self, command: PlaybackCommand, cancel: Cancellation) {
+        if matches!(
+            &command,
+            PlaybackCommand::OpenLocal(_) | PlaybackCommand::Play
+        ) && cancel.check().is_err()
+        {
+            return;
+        }
         match command {
+            PlaybackCommand::OpenRemote(track) => {
+                if cancel.check().is_err() {
+                    return;
+                }
+                self.generation.fetch_add(1, Ordering::AcqRel);
+                self.clear_source();
+                self.path = None;
+                self.emit(PlaybackEventKind::Loaded {
+                    title: track.title.clone(),
+                    duration: track.duration_ms.map(Duration::from_millis),
+                });
+                self.remote = Some(track);
+                self.set_state(PlaybackState::Loading);
+                match self.online(&cancel) {
+                    Ok((prepared, duration)) if cancel.check().is_ok() => {
+                        self.install(prepared);
+                        if let Some(track) = &self.remote {
+                            self.emit(PlaybackEventKind::Loaded {
+                                title: track.title.clone(),
+                                duration,
+                            });
+                        }
+                        self.apply(PlaybackCommand::Play, cancel);
+                    }
+                    Ok((prepared, _)) => {
+                        drop(prepared.source);
+                        let _ = prepared.worker.join();
+                        self.set_state(PlaybackState::Stopped);
+                    }
+                    Err(message) => {
+                        self.set_state(PlaybackState::Stopped);
+                        if cancel.check().is_ok() {
+                            self.emit(PlaybackEventKind::Failed(message));
+                        }
+                    }
+                }
+            }
             PlaybackCommand::OpenLocal(path) => {
                 let previous = self.state;
                 self.set_state(PlaybackState::Loading);
                 match source::prepare(&path) {
-                    Ok(prepared) => {
+                    Ok(prepared) if cancel.check().is_ok() => {
                         let duration = prepared.source.total_duration();
                         let title = path
                             .file_stem()
@@ -227,8 +322,14 @@ impl Worker {
                         self.generation.fetch_add(1, Ordering::AcqRel);
                         self.install(prepared);
                         self.path = Some(path);
+                        self.remote = None;
                         self.emit(PlaybackEventKind::Loaded { title, duration });
                         self.set_state(PlaybackState::Paused);
+                    }
+                    Ok(prepared) => {
+                        drop(prepared.source);
+                        let _ = prepared.worker.join();
+                        self.set_state(PlaybackState::Stopped);
                     }
                     Err(message) => {
                         let restore = if previous == PlaybackState::Playing
@@ -258,13 +359,27 @@ impl Worker {
                     return;
                 }
                 if self.pending.is_none() {
-                    let Some(path) = &self.path else {
+                    let prepared = if self.remote.is_some() {
+                        self.set_state(PlaybackState::Loading);
+                        self.online(&cancel).map(|(prepared, _)| prepared)
+                    } else if let Some(path) = &self.path {
+                        source::prepare(path)
+                    } else {
                         return;
                     };
-                    match source::prepare(path) {
-                        Ok(prepared) => self.install(prepared),
+                    match prepared {
+                        Ok(prepared) if cancel.check().is_ok() => self.install(prepared),
+                        Ok(prepared) => {
+                            drop(prepared.source);
+                            let _ = prepared.worker.join();
+                            self.set_state(PlaybackState::Stopped);
+                            return;
+                        }
                         Err(message) => {
-                            self.emit(PlaybackEventKind::Failed(message));
+                            self.set_state(PlaybackState::Stopped);
+                            if cancel.check().is_ok() {
+                                self.emit(PlaybackEventKind::Failed(message));
+                            }
                             return;
                         }
                     }
@@ -329,7 +444,7 @@ impl Worker {
             PlaybackCommand::Stop => {
                 self.generation.fetch_add(1, Ordering::AcqRel);
                 self.clear_source();
-                self.set_state(if self.path.is_some() {
+                self.set_state(if self.path.is_some() || self.remote.is_some() {
                     PlaybackState::Stopped
                 } else {
                     PlaybackState::Empty
@@ -383,7 +498,7 @@ impl Iterator for EndNotification {
                     let _ = self.events.try_send(PlaybackEvent {
                         generation: self.id,
                         kind: PlaybackEventKind::Failed(
-                            "Audio decoding failed. Stop playback and choose another file.",
+                            "Audio processing failed. Stop playback and try another track.",
                         ),
                     });
                     return sample;

@@ -12,6 +12,9 @@ publish = false
 [dependencies]
 rodio = { version = "=0.23.0", default-features = false, features = ["playback", "mp3", "mp4", "wav", "flac", "vorbis"] }
 slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "accessibility", "compat-1-18"] }
+ureq = { version = "=3.5.0", default-features = false, features = ["rustls", "json"] }
+url = "=2.5.8"
+serde_json = "=1.0.154"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_UI_Controls_Dialogs", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }

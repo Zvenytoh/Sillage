@@ -1,4 +1,5 @@
 use crate::platform::file_dialog;
+use crate::search::Search;
 use sillage::model::PlaybackState;
 use sillage::playback::{Playback, PlaybackCommand, PlaybackEvent, PlaybackEventKind};
 use slint::ComponentHandle;
@@ -11,9 +12,19 @@ use std::time::Duration;
 slint::include_modules!();
 
 fn command(ui: &AppWindow, playback: &Playback, command: PlaybackCommand) {
+    let loading = matches!(
+        &command,
+        PlaybackCommand::OpenLocal(_) | PlaybackCommand::OpenRemote(_)
+    );
     ui.set_error_message("".into());
     if let Err(error) = playback.send(command) {
         ui.set_error_message(error.to_string().into());
+        if loading {
+            ui.set_busy(false);
+        }
+    } else if loading {
+        ui.set_busy(true);
+        ui.set_status("Preparing audio…".into());
     }
 }
 
@@ -34,9 +45,9 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64) {
             let label = match duration {
                 Some(duration) => {
                     let seconds = duration.as_secs();
-                    format!("{}:{:02} · Local audio", seconds / 60, seconds % 60)
+                    format!("{}:{:02} · Audio", seconds / 60, seconds % 60)
                 }
-                None => "Local audio · Length unavailable".into(),
+                None => "Audio · Length unavailable".into(),
             };
             ui.set_duration_label(label.into());
             ui.set_loaded(true);
@@ -58,6 +69,64 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
     let (events, receiver) = mpsc::sync_channel(32);
     let playback = Arc::new(Playback::spawn(events)?);
+    let search = Arc::new(Search::new(ui.as_weak())?);
+    let debounce = Rc::new(slint::Timer::default());
+    {
+        let weak = ui.as_weak();
+        let search = search.clone();
+        let debounce = debounce.clone();
+        ui.on_query_edited(move |query| {
+            search.cancel();
+            debounce.stop();
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            ui.set_results(slint::ModelRc::default());
+            ui.set_searched(false);
+            ui.set_searching(false);
+            ui.set_search_error("".into());
+            if query.trim().is_empty() {
+                return;
+            }
+            let weak = weak.clone();
+            let search = search.clone();
+            debounce.start(
+                slint::TimerMode::SingleShot,
+                Duration::from_millis(200),
+                move || {
+                    if let Some(ui) = weak.upgrade() {
+                        submit_search(&ui, &search);
+                    }
+                },
+            );
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let search = search.clone();
+        let debounce = debounce.clone();
+        ui.on_search(move || {
+            debounce.stop();
+            if let Some(ui) = weak.upgrade() {
+                submit_search(&ui, &search);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let playback = playback.clone();
+        ui.on_play_track(move |row| {
+            if let Some(ui) = weak.upgrade() {
+                let track = sillage::model::Track {
+                    id: row.id.to_string(),
+                    title: row.title.to_string(),
+                    artists: vec![row.artist.to_string()],
+                    duration_ms: None,
+                };
+                command(&ui, &playback, PlaybackCommand::OpenRemote(track));
+            }
+        });
+    }
     let about: Rc<RefCell<Option<AboutWindow>>> = Rc::new(RefCell::new(None));
     {
         let weak = ui.as_weak();
@@ -168,6 +237,23 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     drop(ui);
     drop(about);
     drop(playback);
+    drop(debounce);
+    drop(search);
     let _ = bridge.join();
     result.map_err(Into::into)
+}
+
+fn submit_search(ui: &AppWindow, search: &Search) {
+    ui.set_results(slint::ModelRc::default());
+    ui.set_searched(false);
+    match search.submit(ui.get_query().to_string()) {
+        Ok(()) => {
+            ui.set_searching(true);
+            ui.set_search_error("".into());
+        }
+        Err(message) => {
+            ui.set_searching(false);
+            ui.set_search_error(message.into());
+        }
+    }
 }

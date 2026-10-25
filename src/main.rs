@@ -2,6 +2,7 @@
 
 mod app;
 mod platform;
+mod search;
 
 fn main() {
     if let Err(error) = app::run() {

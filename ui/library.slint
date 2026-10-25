@@ -1,0 +1,53 @@
+import { Button, LineEdit, ListView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { SearchRow } from "model.slint";
+
+export component MusicSearch inherits Rectangle {
+    in-out property <string> query;
+    in property <[SearchRow]> results;
+    in property <bool> searching;
+    in property <bool> searched;
+    in property <bool> busy;
+    in property <string> search-error;
+    callback query-edited(string);
+    callback search();
+    callback play-track(SearchRow);
+    VerticalLayout {
+        spacing: 12px;
+        HorizontalLayout {
+            spacing: 12px;
+            LineEdit {
+                text <=> root.query;
+                placeholder-text: "Search for a song or artist";
+                accessible-label: "Search YouTube Music";
+                edited(text) => { root.query-edited(text); }
+                accepted => { root.search(); }
+            }
+            Button { text: "Search"; clicked => { root.search(); } }
+        }
+        Text { text: "Searching YouTube Music…"; color: Theme.muted; visible: root.searching; }
+        Text { text: root.search-error; color: Theme.error; wrap: word-wrap; visible: root.search-error != ""; }
+        if !root.searched && !root.searching && root.results.length == 0: Text {
+            text: "Find your next listen."; font-size: 28px; color: Theme.muted; vertical-alignment: center; vertical-stretch: 1;
+        }
+        if root.searched && !root.searching && root.results.length == 0 && root.search-error == "": Text {
+            text: "No playable results found. Try another search."; color: Theme.muted; vertical-alignment: center; vertical-stretch: 1;
+        }
+        if root.results.length > 0: ListView {
+            for row in root.results: Rectangle {
+                height: 72px;
+                width: parent.width;
+                Rectangle { y: parent.height - 1px; height: 1px; width: parent.width; background: Theme.line; }
+                HorizontalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+                    VerticalLayout {
+                        Text { text: row.title; color: Theme.pine; font-size: 16px; overflow: elide; }
+                        Text { text: row.artist; color: Theme.muted; font-size: 13px; overflow: elide; }
+                    }
+                    Button { text: "Play"; accessible-label: "Play " + row.title; enabled: !root.busy; clicked => { root.play-track(row); } }
+                }
+            }
+        }
+    }
+}

@@ -1,8 +1,8 @@
 # Architecture cible
 
-Le premier socle local M1 est implémenté ; les modules service, stockage,
-pochettes et mises à jour restent une architecture cible. Le lecteur n'a pas été
-lancé et aucune validation visuelle ou sonore de M1 n'est acquise.
+Le socle local M1 et la tranche recherche publique → lecture progressive sont
+implémentés. Stockage, pochettes, navigation et mises à jour restent à construire.
+Le lecteur n'a pas été lancé ; son rendu et son comportement audio ne sont pas validés.
 
 ## Flux principal
 
@@ -26,15 +26,16 @@ L'audio poursuit la lecture lorsque la fenêtre est masquée.
 |---|---|
 | `src/main.rs`, `build.rs`, `Cargo.toml` | Entrée, compilation Slint, dépendances |
 | `src/app.rs` | État, commandes, réception des événements, invalidation des générations |
+| `src/search.rs` | Worker de recherche unique, dernière requête conservée, notification Slint |
 | `src/model.rs` | Types partagés de pistes, pages, commandes et erreurs |
 | `src/queue.rs` | Ordre de lecture, répétition, mélange et déplacements |
 | `src/service/mod.rs` | Client du service et opérations métier |
 | `src/service/transport.rs` | HTTPS, limites, redirections, annulation et délais |
 | `src/service/parse.rs` | Réponses distantes vers données typées |
-| `src/service/stream.rs` | Résolution du flux et de ses capacités |
+| `src/service/stream.rs` | Lecture HTTP progressive bornée, annulation et refus du seek |
 | `src/service/auth.rs` | Connexion explicite et état de session |
 | `src/playback/mod.rs` | Machine de lecture et commandes audio |
-| `src/playback/source.rs` | Décodage local sur worker et petite file PCM bornée |
+| `src/playback/source.rs` | Décodage local/distant sur worker et petite file PCM bornée |
 | `src/playback/buffer.rs` | Source progressive, fenêtre mémoire et recherche temporelle |
 | `src/storage.rs` | Paramètres, reprise atomique et versions du format local |
 | `src/artwork.rs` | Chargement, redimensionnement et éviction des pochettes |
@@ -46,6 +47,29 @@ L'audio poursuit la lecture lorsque la fenêtre est masquée.
 
 Créer ces fichiers avec les tâches qui en ont besoin. Ne pas générer une forêt
 de modules vides. Scinder un fichier uniquement lorsque ses responsabilités le justifient.
+
+## Tranche publique implémentée
+
+`Client::search` retourne des `Track` ; `Client::resolve` produit un `ResolvedStream`
+sans Debug ni sérialisation. `PlaybackCommand::OpenRemote(Track)` confie résolution
+et décodage au worker audio, hors UI. Aucun bus générique de requêtes n'est nécessaire
+pour ces deux opérations. La recherche et la lecture ont chacune un worker réseau,
+une seule opération courante, et des jetons d'annulation partagés.
+
+Métadonnées : HTTPS vers les deux hôtes YouTube fixes, redirections refusées,
+4 Mio maximum, délai global de 15 s par requête. Audio : uniquement sous-domaines
+DNS de googlevideo.com, HTTPS 443, trois redirections revérifiées maximum,
+Content-Range et taille contrôlés. Premier bloc de 64 Kio, suivants de 256 Kio ;
+aucun fichier audio complet chargé en mémoire ou écrit sur disque. Le décodage
+alimente 16 blocs PCM de 1 024 trames, au plus huit canaux à 192 kHz. Le callback
+audio ne fait ni réseau, ni décodage, ni attente du producteur ; il remplit une
+sous-alimentation par du silence. Ces bornes de code ne sont pas des mesures mémoire.
+
+Stop, remplacement de source et fermeture invalident les tâches précédentes.
+Une requête bloquée peut attendre son délai réseau avant de se terminer ;
+l'annulation n'interrompt pas l'appel système immédiatement. Un échec nécessite
+une reprise manuelle. Pas de compte, cookies, pagination, seek ou renouvellement
+automatique des URL dans cette tranche.
 
 ## Décisions
 
