@@ -8,6 +8,7 @@ component MusicCard inherits Rectangle {
     in property <SearchRow> track;
     in property <bool> selected;
     in property <bool> busy;
+    in property <bool> wide;
     callback play(); callback request-artwork(SearchRow);
     private property <string> requested-id;
     function request-image() { if root.track.id != "" && root.requested-id != root.track.id { root.requested-id = root.track.id; root.request-artwork(root.track); } }
@@ -20,19 +21,20 @@ component MusicCard inherits Rectangle {
     accessible-action-default => { if !root.busy { root.play(); } }
     border-width: card-focus.has-focus ? 1px : 0px;
     border-color: Theme.accent;
-    min-width: 100px; max-width: 200px; preferred-width: 184px; height: 250px; border-radius: 6px;
+    min-width: 100px; max-width: 200px; preferred-width: 184px; height: root.art-height + 72px; border-radius: 6px;
     background: hover.has-hover ? #ffffff08 : transparent;
-    private property <length> art-size: min(self.width, 184px);
-    Cover { width: root.art-size; height: root.art-size; artwork: root.track.artwork; }
-    Rectangle { y: root.art-size + 10px; width: parent.width; height: 36px; clip: true;
-        Text { width: parent.width; height: 36px; text: root.track.title; color: root.selected ? Theme.accent : Theme.text; font-size: 14px; font-weight: 600; wrap: word-wrap; overflow: elide; }
+    private property <length> art-size: self.width;
+    private property <length> art-height: root.wide ? root.art-size * 9 / 16 : root.art-size;
+    Cover { x: 0; y: 0; width: root.art-size; height: root.art-height; artwork: root.track.artwork; }
+    Rectangle { x: 0; y: root.art-height + 10px; width: parent.width; height: 38px; clip: true;
+        Text { x: 0; y: 0; width: parent.width; height: 38px; text: root.track.title; color: root.selected ? Theme.accent : Theme.text; font-size: 14px; font-weight: 600; wrap: word-wrap; overflow: elide; }
     }
-    Text { y: root.art-size + 49px; width: parent.width; text: root.track.artist; color: Theme.muted; font-size: 12px; overflow: elide; }
+    Text { x: 0; y: root.art-height + 52px; width: parent.width; height: 18px; text: root.track.artist; color: Theme.muted; font-size: 12px; overflow: elide; }
     hover := TouchArea { double-clicked => { if !root.busy { root.play(); } } }
     card-focus := FocusScope { width: 0; enabled: !root.busy;
         key-pressed(event) => { if event.text == Key.Space || event.text == Key.Return { root.play(); return accept; } return reject; }
     }
-    ActionButton { x: root.art-size - 46px; y: root.art-size - 47px; width: 38px; height: 38px; accented: true; round: true;
+    ActionButton { x: root.art-size - 46px; y: root.art-height - 47px; width: 38px; height: 38px; accented: true; round: true;
         icon: @image-url("../assets/ui/play.svg"); label: "Écouter " + root.track.title; enabled: !root.busy;
         visible: root.selected || hover.has-hover || card-focus.has-focus || self.has-focus;
         clicked => { root.play(); }
@@ -40,7 +42,7 @@ component MusicCard inherits Rectangle {
 }
 
 export component MusicLibrary inherits Rectangle {
-    private property <[int]> card-indices: root.width > 1100px ? [0,1,2,3,4,5] : [0,1,2,3];
+    private property <[int]> card-indices: root.width > 1450px ? [0,1,2,3,4,5,6,7] : root.width > 1100px ? [0,1,2,3,4,5] : [0,1,2,3];
     in property <[SearchRow]> results; in property <[SearchRow]> saved-rows; in property <[SearchRow]> recent-rows;
     in property <[SearchRow]> trending-rows; in property <[SearchRow]> discovery-rows;
     in property <bool> home-loading; in property <string> home-error; in property <string> home-source;
@@ -51,20 +53,23 @@ export component MusicLibrary inherits Rectangle {
     callback play-track(SearchRow); callback save-track(SearchRow); callback enqueue(SearchRow);
     callback request-artwork(SearchRow); callback refresh-home(); callback navigate(int);
     if root.page == 0: ScrollView {
-        VerticalLayout { padding-left: 28px; padding-right: 28px; padding-bottom: 28px; spacing: 22px;
-            HorizontalLayout {
+        content-height: home-content.height;
+        content-width: self.visible-width;
+        home-content := VerticalLayout { x: 0; y: 0; width: parent.width; height: self.preferred-height; alignment: start; padding-left: 28px; padding-right: 28px; padding-bottom: 28px; spacing: 24px;
+            property <length> card-width: min(200px, (self.width - 56px - (root.card-indices.length - 1) * 18px) / root.card-indices.length);
+            HorizontalLayout { height: 40px;
                 Text { text: "Accueil"; color: Theme.text; font-size: 30px; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
                 ActionButton { text: "Actualiser"; quiet: true; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
             }
-            if root.recent-rows.length > 0: VerticalLayout { spacing: 16px;
-                HorizontalLayout { Text { text: "Écoutés récemment"; color: Theme.text; font-size: 21px; font-weight: 700; horizontal-stretch: 1; vertical-alignment: center; } ActionButton { text: "Tout voir"; quiet: true; clicked => { root.navigate(3); } } }
-                HorizontalLayout { spacing: 18px;
-                    for index in root.card-indices: MusicCard { track: root.recent-rows[index]; visible: root.recent-rows.length > index; busy: root.busy; selected: root.selected-id == root.recent-rows[index].id;
+            if root.recent-rows.length > 0: VerticalLayout { alignment: start; spacing: 16px;
+                HorizontalLayout { height: 32px; Text { text: "Écoutés récemment"; color: Theme.text; font-size: 21px; font-weight: 700; horizontal-stretch: 1; vertical-alignment: center; } ActionButton { text: "Tout voir"; quiet: true; clicked => { root.navigate(3); } } }
+                HorizontalLayout { alignment: start; spacing: 18px;
+                    for index in root.card-indices: MusicCard { width: home-content.card-width; horizontal-stretch: 0; track: root.recent-rows[index]; visible: root.recent-rows.length > index; busy: root.busy; selected: root.selected-id == root.recent-rows[index].id;
                         play => { root.play-track(root.recent-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
                     }
                 }
             }
-            if root.recent-rows.length == 0: Text { text: "Vos écoutes récentes apparaîtront ici après vos premiers morceaux."; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
+            if root.recent-rows.length == 0: Text { height: self.preferred-height; text: "Vos écoutes récentes apparaîtront ici après vos premiers morceaux."; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
             if root.home-loading && root.trending-rows.length == 0: VerticalLayout { spacing: 12px;
                 Text { text: "Chargement de votre sélection…"; color: Theme.muted; }
                 for skeleton in [0,1,2]: Rectangle { height: 48px; background: #ffffff08; border-radius: 5px; }
@@ -73,11 +78,12 @@ export component MusicLibrary inherits Rectangle {
                 Text { text: root.home-error; color: Theme.error; wrap: word-wrap; font-size: 13px; }
                 ActionButton { text: "Réessayer"; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
             }
-            if root.trending-rows.length > 0: VerticalLayout { spacing: 12px;
-                Text { text: "Tendances en France"; color: Theme.text; font-size: 21px; font-weight: 700; }
-                Text { text: root.home-source; color: Theme.muted; font-size: 11px; wrap: word-wrap; }
-                for pair in [0,1,2,3]: HorizontalLayout { spacing: 18px;
+            if root.trending-rows.length > 0: VerticalLayout { alignment: start; spacing: 12px;
+                Text { height: 28px; text: "Tendances en France"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                Text { height: self.preferred-height; text: root.home-source; color: Theme.muted; font-size: 11px; wrap: word-wrap; }
+                for pair in [0,1,2,3]: HorizontalLayout { height: 62px; spacing: 18px;
                     for side in [0,1]: SongRow {
+                        width: (home-content.width - 56px - 18px) / 2; horizontal-stretch: 0;
                         track: root.trending-rows[pair * 2 + side]; number: pair * 2 + side + 1;
                         visible: root.trending-rows.length > pair * 2 + side; busy: root.busy; actions: false;
                         selected: root.selected-id == self.track.id;
@@ -86,10 +92,10 @@ export component MusicLibrary inherits Rectangle {
                     }
                 }
             }
-            if root.discovery-rows.length > 0: VerticalLayout { spacing: 16px;
-                Text { text: "À découvrir"; color: Theme.text; font-size: 21px; font-weight: 700; }
-                HorizontalLayout { spacing: 18px;
-                    for index in root.card-indices: MusicCard { track: root.discovery-rows[index]; visible: root.discovery-rows.length > index; busy: root.busy; selected: root.selected-id == self.track.id;
+            if root.discovery-rows.length > 0: VerticalLayout { alignment: start; spacing: 16px;
+                Text { height: 28px; text: "À découvrir"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                HorizontalLayout { alignment: start; spacing: 18px;
+                    for index in root.card-indices: MusicCard { width: home-content.card-width; horizontal-stretch: 0; wide: true; track: root.discovery-rows[index]; visible: root.discovery-rows.length > index; busy: root.busy; selected: root.selected-id == self.track.id;
                         play => { root.play-track(root.discovery-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
                     }
                 }

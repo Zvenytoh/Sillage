@@ -97,6 +97,7 @@ export component SearchField inherits Rectangle {
         Rectangle {
             horizontal-stretch: 1;
             Text {
+                x: 0; y: 0; width: parent.width; height: parent.height;
                 text: "Rechercher un titre, un artiste…"; color: Theme.muted;
                 font-size: 14px; vertical-alignment: center;
                 visible: root.text == "";

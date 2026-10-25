@@ -84,3 +84,34 @@ Vérifications finales exécutées : `cargo fmt --all -- --check`,
 `cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings`,
 `cargo build --locked --release --bins --target-dir .tools/app-target`.
 Sorties 0, aucun avertissement Rust/Slint. Deux jobs, priorité BelowNormal.
+
+## Retour utilisateur — géométrie de l'accueil
+
+La capture native fournie ensuite par l'utilisateur montre le vrai accueil à
+1920 px : titre « À découvrir » séparé des cartes par un grand vide, couvertures
+empiétant sur les titres, deux colonnes de tendances de largeurs variables,
+placeholder de recherche centré dans l'espace restant. Ce retour est une preuve
+du rendu précédent, pas une capture de la correction.
+
+Cause confirmée par inspection du compilateur Slint 1.18.1
+(`passes/default_geometry.rs`) : un élément dimensionné hors layout reçoit un
+centrage automatique lorsque x/y ne sont pas définis. La couverture MusicCard
+était ainsi centrée verticalement dans la carte alors que les légendes étaient
+positionnées depuis son bord haut. Le layout de la page et les hauteurs de
+titres n'étaient pas suffisamment contraints ; les rangées de tendances
+résolvaient chacune leurs largeurs indépendamment.
+
+Correction ciblée : ancrages x/y explicites dans MusicCard, hauteur de carte
+calculée sur l'image et ses légendes, viewport de l'accueil lié à la hauteur
+préférée de son contenu, titres/rangées bornés, colonnes égales. Les nouveaux
+clips ont un cadre 16:9 et les récents gardent leur cadre carré. Quatre, six
+ou huit cartes selon la largeur utile ; placeholder ancré à gauche.
+
+Aucune commande du bureau, ouverture, écoute ou mesure effectuée pour cette
+correction. La nouvelle géométrie attend encore une vérification native.
+
+Formatage, Clippy toutes cibles sans avertissement et build Release --bins
+réexécutés avec succès après cette correction. Préversion distincte
+`dist/Sillage-fr-violet-layout-preview.exe` ; raccourci Bureau mis à jour sans
+fermer ni remplacer l'exécutable précédent. Résultats et empreinte :
+`french-home-layout-build-results-2026-10-25.json`.

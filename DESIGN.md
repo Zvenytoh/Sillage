@@ -67,6 +67,13 @@ Current source dimensions supersede the earlier rebuild notes below: initial
 Violet #AD91FF uses ink #19112A; wash #342D45 is restrained. Volume fill and focus
 follow the same accent. The native rendering has not yet been inspected.
 
+The user's subsequent native screenshot exposed automatic centering of artwork
+over captions, stretched section spacing and uneven trend columns. The refinement
+anchors card content explicitly and bounds the scroll content to its intrinsic
+height. Discovery uses 16:9 video previews; recents use square covers. Home shows
+four, six or eight cards according to available content width. The search hint
+is explicitly left aligned. These source changes await native verification.
+
 The older sections describe the preceding reconstruction, not a current visual
 approval. Native QA is deferred while the user is gaming.
 

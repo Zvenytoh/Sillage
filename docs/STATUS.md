@@ -4,6 +4,14 @@ Date : 2026-10-25.
 
 ## Reprise active — accueil français violet
 
+- Dernier retour : capture native fournie par l'utilisateur. Correction ciblée
+  du centrage implicite des pochettes, du vide entre sections, des largeurs de
+  colonnes et du placeholder. Découverte 16:9, 4/6/8 cartes selon largeur.
+  Formatage, Clippy et Release réussis. Raccourci vers la nouvelle préversion
+  `dist/Sillage-fr-violet-layout-preview.exe`, ancienne version préservée.
+  Preuve : `docs/qa/french-home-layout-build-results-2026-10-25.json`.
+  Aucune ouverture/commande du bureau ; rendu corrigé à confirmer dans le natif.
+
 - Choix A Équilibré + violet `#AD91FF`, implémentation approuvée « nickel go fonce ».
   Branche `codex/french-home-implementation`. Les mentions de brouillon plus bas
   décrivent les étapes antérieures.
