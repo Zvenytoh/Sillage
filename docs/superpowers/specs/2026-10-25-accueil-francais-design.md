@@ -1,9 +1,9 @@
 # Sillage — conception française et accueil musical
 
-Statut : **brouillon de brainstorming, non approuvé**. Aucune modification produit
-autorisée par ce document seul. L'utilisateur précise vouloir un accueil de type
-Apple Music/Spotify et accepte la comparaison de maquettes. Aucun choix visuel
-ni approbation de la conception complète n'a encore été reçu.
+Statut : **direction visuelle retenue : A Équilibré, accent violet**, choisie
+explicitement par l'utilisateur le 2026-10-25. Accueil de type Apple Music/Spotify.
+Le plan d'implémentation doit être relu avant réalisation. Les paramètres internes
+ci-dessous restent des décisions d'ingénierie proposées, distinctes du choix visuel.
 
 ## Demande confirmée
 
@@ -22,7 +22,7 @@ de lecture audible, de tests unitaires ou d'accès au compte n'en découle.
 
 - Accueil personnel d'abord : reprendre ses écoutes, puis découvrir les tendances.
 - France comme pays initial des tendances ; interface française, catalogue mondial.
-- Accent pervenche `#9CA9FF`, surfaces noires/charbon, contraste conservé.
+- Accent violet `#AD91FF`, surfaces noires/charbon, texte sur accent `#19112A`.
 - Historique local, dédupliqué, limité à 200 titres ; aucune synchronisation de compte.
 - Une écoute rejoint l'historique après 30 s de PCM consommé, ou après la moitié
   d'un titre de moins de 60 s. Une ouverture ratée, recherche ou préparation seule
@@ -45,7 +45,12 @@ Trois compositions interactives ont été ouvertes dans le navigateur intégré 
 A Équilibré (récents puis tendances), B Éditorial (sélection à la une puis récents),
 C Immédiat (raccourcis compacts puis tendances). Accents indépendants : pervenche
 `#9CA9FF`, rose `#E89CB8`, ambre `#E5BB7A`.
-Recommandation de l'agent : A/pervenche, à confirmer par l'utilisateur.
+Choix utilisateur reçu : **« équilibre accent violet »**. Référence retenue :
+`.tools/french-home-mocks/content/accueil-violet.html`, capture complète
+`.tools/french-home-mocks/a-equilibre-violet.png`. Violet `#AD91FF` ; lavis
+`#342D45`. L'accent est rendu plus violet que le candidat pervenche initial.
+Cette sélection porte la composition et la couleur ; elle ne valide pas encore
+le fonctionnement d'un accueil natif ou la correction du volume natif.
 
 Maquettes locales non livrées dans l'app : `.tools/french-home-mocks/content/`.
 Pochettes réelles du catalogue public Apple/iTunes, données d'écoute et classement
@@ -60,7 +65,7 @@ ne valident ni le volume natif ni le rendu du lecteur Rust. Serveur de comparais
 temporaire sur loopback, télémétrie désactivée ; aucune modification produit.
 
 Palette proposée : fond `#090A0D`, surfaces `#14151B`, survol `#242630`, texte
-`#F4F4F7`, secondaire `#ADB0BD`, accent `#9CA9FF`, texte sur accent `#111326`.
+`#F4F4F7`, secondaire `#ADB0BD`, accent `#AD91FF`, texte sur accent `#19112A`.
 L'accent porte lecture principale, navigation active, sélection et progression.
 Les titres ordinaires restent blancs ; les pochettes portent l'essentiel de la
 couleur. Pas de halo ni de flou permanent. Un dégradé statique discret dans
