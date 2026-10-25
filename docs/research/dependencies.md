@@ -1,7 +1,9 @@
 # Dependency and licensing investigation
 
 Date: 2026-10-25. This records source inspection, not a resolved Sillage dependency
-graph. There is no Cargo manifest or lockfile in Sillage yet.
+graph for the application. There is no application Cargo manifest yet. A separate
+development utility under `tools/decode-probe/` now pins Symphonia 0.5.5 with only
+AAC/MP4 features and commits its own lockfile; it does not include audio output.
 
 ## Reference versions
 

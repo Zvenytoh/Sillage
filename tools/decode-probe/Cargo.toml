@@ -1,0 +1,11 @@
+[package]
+name = "sillage-decode-probe"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[dependencies]
+symphonia = { version = "=0.5.5", default-features = false, features = ["aac", "isomp4"] }
+
+[workspace]

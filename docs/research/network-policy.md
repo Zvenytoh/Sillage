@@ -19,7 +19,10 @@ The audio host must match the entire DNS name, not a substring.
 Each request and response-body read has a 15-second cancellation deadline.
 The HTTP handler does not store or send cookies. The probe sends no account
 authorization. Signed URLs and raw responses remain in memory and are not printed,
-written to disk or included in error messages. No retries, updates, lyric services,
+written to disk or included in error messages. The explicitly selected
+`-SaveDecodeSample` option additionally writes only the bounded media prefix to
+ignored `.tools/decode-sample.m4a`, refusing to overwrite an existing file.
+No retries, updates, lyric services,
 telemetry, browser debugging or account writes are involved.
 
 Success establishes only: a public search response contained a video ID; player
@@ -42,3 +45,6 @@ pwsh -NoProfile -File scripts/probe-service.ps1 -Query Bach
 Exit code: 0. See the [sanitized result](probe-result-2026-10-25.json).
 This authorization covered this public search/prefix check; it does not authorize
 audio playback, browser/account access, or unrelated functional tests.
+
+The [silent decoding check](decode-check.md) is prepared separately. Its new
+capture/save option and decoder invocation have not been executed or validated.

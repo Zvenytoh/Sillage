@@ -5,10 +5,17 @@ No browser, account, playback, persistent cookies, or response-body logging.
 Client values reference TubeFast c6c55dd6b1ef60f0339737e7279cda2ff3b433e2.
 #>
 [CmdletBinding()]
-param([ValidateLength(1, 120)][string]$Query = 'Bach')
+param(
+    [ValidateLength(1, 120)][string]$Query = 'Bach',
+    [switch]$SaveDecodeSample
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$samplePath = Join-Path $PSScriptRoot '../.tools/decode-sample.m4a'
+if ($SaveDecodeSample -and (Test-Path -LiteralPath $samplePath)) {
+    throw 'Decode sample already exists. Preserve or remove it explicitly before capturing another.'
+}
 $stage = 'setup'
 $handler = [System.Net.Http.HttpClientHandler]::new()
 $handler.AllowAutoRedirect = $false
@@ -71,7 +78,7 @@ function Invoke-BoundedRequest {
             if ($prefix.Length -lt 12 -or [Text.Encoding]::ASCII.GetString($prefix, 4, 4) -ne 'ftyp') {
                 throw 'Expected an ISO BMFF container prefix.'
             }
-            return [pscustomobject]@{ status = $status; prefix_bytes = $memory.Length }
+            return [pscustomobject]@{ status = $status; prefix_bytes = $memory.Length; sample = $prefix }
         }
         return [Text.Encoding]::UTF8.GetString($memory.ToArray()) | ConvertFrom-Json -Depth 64 -AsHashtable
     } finally {
@@ -130,6 +137,12 @@ try {
     $stage = 'bounded_audio_prefix'
     $prefix = Invoke-BoundedRequest -Uri ([uri]$audio[0]['url']) -Audio
     if ($prefix.prefix_bytes -eq 0) { throw 'Empty audio response.' }
+    if ($SaveDecodeSample) {
+        $stage = 'save_local_prefix'
+        $null = [IO.Directory]::CreateDirectory((Split-Path -Parent $samplePath))
+        $sampleFile = [IO.File]::Open($samplePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        try { $sampleFile.Write($prefix.sample, 0, $prefix.sample.Length) } finally { $sampleFile.Dispose() }
+    }
     [ordered]@{
         utc = [DateTime]::UtcNow.ToString('o')
         public_search = 'video_id_found'
@@ -137,6 +150,7 @@ try {
         audio_prefix_bytes = $prefix.prefix_bytes
         audio_http_status = $prefix.status
         container_prefix = 'ftyp'
+        local_decode_sample_saved = [bool]$SaveDecodeSample
         decode = 'not_attempted'
         playback = 'not_attempted'
         account = 'not_accessed'
