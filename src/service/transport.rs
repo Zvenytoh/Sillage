@@ -133,6 +133,9 @@ impl Transport {
             .call()
             .map_err(|_| ServiceError::Network)?;
         if response.status().as_u16() != 200 {
+            if response.status().as_u16() == 429 {
+                return Err(ServiceError::RateLimited);
+            }
             return Err(ServiceError::Network);
         }
         let mime = response

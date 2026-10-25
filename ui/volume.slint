@@ -1,0 +1,38 @@
+import { Theme } from "theme.slint";
+
+export component VolumeControl inherits Rectangle {
+    in-out property <float> value: 25;
+    callback changed(float);
+    min-width: 80px; height: 32px;
+    forward-focus: focus;
+    accessible-role: slider; accessible-label: "Volume";
+    accessible-value: root.value; accessible-value-minimum: 0;
+    accessible-value-maximum: 100; accessible-value-step: 5;
+    accessible-action-increment => { root.update(root.value + 5); }
+    accessible-action-decrement => { root.update(root.value - 5); }
+    accessible-action-set-value(v) => { if v.is-float() { root.update(v.to-float()); } }
+    function update(value: float) { root.value = clamp(value, 0, 100); root.changed(root.value / 100); }
+    Rectangle { x: 6px; y: 14px; width: parent.width - 12px; height: 4px; border-radius: 2px; background: #555555;
+        Rectangle { width: parent.width * root.value / 100; height: 4px; border-radius: 2px; background: Theme.text; }
+    }
+    Rectangle {
+        x: 6px + (parent.width - 12px) * root.value / 100 - 5px; y: 11px; width: 10px; height: 10px;
+        border-radius: 5px; background: Theme.text; visible: touch.has-hover || touch.pressed || focus.has-focus;
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { focus.focus(); root.update((self.mouse-x - 6px) / (self.width - 12px) * 100); }
+        moved => { if self.pressed { root.update((self.mouse-x - 6px) / (self.width - 12px) * 100); } }
+    }
+    focus := FocusScope {
+        width: 0;
+        key-pressed(event) => {
+            if event.text == Key.LeftArrow || event.text == Key.DownArrow { root.update(root.value - 5); return accept; }
+            if event.text == Key.RightArrow || event.text == Key.UpArrow { root.update(root.value + 5); return accept; }
+            if event.text == Key.Home { root.update(0); return accept; }
+            if event.text == Key.End { root.update(100); return accept; }
+            return reject;
+        }
+    }
+    border-width: focus.has-focus ? 1px : 0px; border-color: Theme.text; border-radius: 4px;
+}

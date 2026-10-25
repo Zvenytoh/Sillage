@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-25",
+  "feature": "Spotify Desktop composition rebuild",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "exitCode": 0,
+      "slintWarnings": 0
+    },
+    {
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target",
+      "exitCode": 0
+    }
+  ],
+  "artifact": {
+    "path": "dist/Sillage-desktop-preview.exe",
+    "bytes": 17703424,
+    "sha256": "7D5D532D453DF9053B1E97456431D23CAC2B3345FC998C33917A568A83B80FF3"
+  },
+  "shortcut": {
+    "name": "Sillage.lnk",
+    "targetVerified": true
+  },
+  "userProvidedPreviousScreenshotReviewed": true,
+  "newRenderedVisualQA": false,
+  "applicationLaunched": false,
+  "audioPlayed": false,
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "newPreparedTestCases": 3,
+  "performanceMeasured": false,
+  "runtimePermission": "Static checks only, explicitly retained"
+}

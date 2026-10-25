@@ -2,7 +2,7 @@ use rodio::{Decoder, Source};
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -13,6 +13,7 @@ pub(super) struct Prepared {
     pub source: Box<dyn Source + Send>,
     pub worker: JoinHandle<()>,
     pub failed: Arc<AtomicBool>,
+    pub position: Arc<AtomicU64>,
 }
 
 pub(super) fn prepare(path: &Path) -> Result<Prepared, &'static str> {
@@ -57,6 +58,7 @@ fn prepare_decoder(
     }
     let duration = decoder.total_duration();
     let decoder_failed = failed.clone();
+    let position = Arc::new(AtomicU64::new(0));
     let (sender, receiver) = mpsc::sync_channel(16);
     let worker = std::thread::Builder::new()
         .name("sillage-decode".into())
@@ -88,9 +90,11 @@ fn prepare_decoder(
             channels,
             rate,
             duration,
+            position: position.clone(),
         }),
         worker,
         failed,
+        position,
     })
 }
 
@@ -102,6 +106,7 @@ struct PcmSource {
     channels: rodio::ChannelCount,
     rate: rodio::SampleRate,
     duration: Option<Duration>,
+    position: Arc<AtomicU64>,
 }
 
 impl Iterator for PcmSource {
@@ -127,6 +132,11 @@ impl Iterator for PcmSource {
         }
         let sample = self.samples[self.at];
         self.at += 1;
+        if self.at == self.samples.len() {
+            // Count decoded samples actually consumed; inserted underrun silence never advances the song.
+            self.position
+                .fetch_add(self.samples.len() as u64, Ordering::Release);
+        }
         Some(sample)
     }
 }
@@ -143,5 +153,37 @@ impl Source for PcmSource {
     }
     fn total_duration(&self) -> Option<Duration> {
         self.duration
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn buffering_silence_does_not_advance_track_position() {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let position = Arc::new(AtomicU64::new(0));
+        let mut source = PcmSource {
+            receiver,
+            samples: Vec::new(),
+            at: 0,
+            silence: 0,
+            channels: rodio::ChannelCount::new(2).expect("channels"),
+            rate: rodio::SampleRate::new(44100).expect("rate"),
+            duration: None,
+            position: position.clone(),
+        };
+        for _ in 0..512 {
+            assert_eq!(source.next(), Some(0.0));
+        }
+        assert_eq!(position.load(Ordering::Acquire), 0);
+        sender.send(vec![0.25; 8]).expect("chunk");
+        for _ in 0..8 {
+            assert_eq!(source.next(), Some(0.25));
+        }
+        assert_eq!(position.load(Ordering::Acquire), 8);
+        assert_eq!(source.next(), Some(0.0));
+        assert_eq!(position.load(Ordering::Acquire), 8);
     }
 }

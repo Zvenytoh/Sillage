@@ -1,139 +1,183 @@
-import { AboutSlint, Palette } from "std-widgets.slint";
+import { AboutSlint, Palette, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { ActionButton, SearchField, Cover } from "components.slint";
 import { PlayerControls } from "player.slint";
 import { MusicSearch } from "library.slint";
+import { TrackList } from "tracks.slint";
 import { SearchRow } from "model.slint";
 export { SearchRow } from "model.slint";
 
 export component AboutWindow inherits Window {
-    title: "About Sillage"; width: 380px; height: 260px;
-    background: Theme.surface;
-    VerticalLayout {
-        padding: 24px; spacing: 12px;
+    title: "About Sillage"; width: 380px; height: 260px; background: Theme.surface;
+    VerticalLayout { padding: 24px; spacing: 12px;
         Text { text: "Sillage"; color: Theme.text; font-size: 24px; font-weight: 700; }
-        Text { text: "Version 0.1.0 · MIT"; color: Theme.muted; }
+        Text { text: "Native music player · Version 0.1.0 · MIT"; color: Theme.muted; }
         AboutSlint { }
     }
 }
 
 export component AppWindow inherits Window {
-    title: "Sillage";
-    icon: @image-url("../assets/sillage.png");
-    preferred-width: 1280px; preferred-height: 800px;
-    min-width: 800px; min-height: 560px;
-    background: Theme.canvas;
-    default-font-family: "Segoe UI";
-    default-font-size: 14px;
+    title: "Sillage"; icon: @image-url("../assets/sillage.png");
+    preferred-width: 1440px; preferred-height: 900px; min-width: 1000px; min-height: 700px;
+    background: Theme.canvas; default-font-family: "Segoe UI"; default-font-size: 14px;
     init => { Palette.color-scheme = ColorScheme.dark; }
     in property <string> track-title: "Nothing playing";
-    in property <string> track-artist: "Choose a song to get started";
+    in property <string> track-artist: "Find something you love";
     in property <string> selected-id;
     in property <image> track-artwork;
     in property <string> duration-label;
-    in property <string> status: "Search for music to begin.";
+    in property <string> elapsed-label: "0:00";
+    in property <float> duration-seconds;
+    in property <float> position-seconds;
+    in property <string> status: "Ready";
     in-out property <string> query;
     in property <[SearchRow]> results;
-    in property <bool> searching;
-    in property <bool> searched;
-    in property <string> search-error;
-    in property <string> error-message;
-    in property <bool> loaded;
-    in property <bool> playing;
-    in property <bool> busy;
+    in property <[SearchRow]> saved-rows;
+    in property <[SearchRow]> queue-rows;
+    in property <bool> searching; in property <bool> searched;
+    in property <string> search-error; in property <string> error-message;
+    in property <bool> loaded; in property <bool> playing; in property <bool> busy;
+    in property <bool> library-ready;
+    in property <bool> saved-current;
+    in property <bool> can-next; in property <bool> can-previous;
+    in-out property <bool> repeat; in-out property <bool> shuffle;
     in-out property <float> volume: 25;
-    callback open-file(); callback toggle-play(); callback stop();
-    callback volume-changed(float); callback show-about();
+    in-out property <int> page;
+    in-out property <bool> details-open;
+    in-out property <bool> queue-open;
+    in-out property <bool> library-collapsed;
+    private property <length> rail-width: root.library-collapsed ? 72px : root.width >= 1500px ? 280px : 240px;
+    private property <bool> panel-visible: root.details-open || root.queue-open;
+    private property <length> panel-reserve: root.panel-visible && root.width >= 1280px ? 312px : 0px;
+    callback open-file(); callback toggle-play(); callback stop(); callback volume-changed(float); callback show-about();
     callback query-edited(string); callback search(); callback play-track(SearchRow);
+    callback save-track(SearchRow); callback save-current(); callback enqueue(SearchRow);
+    callback play-queued(SearchRow); callback clear-queue();
+    callback next-track(); callback previous-track(); callback ended(); callback mute();
+    callback artwork-ready(SearchRow); callback queue-mode-changed();
 
-    VerticalLayout {
-        spacing: 0;
-        HorizontalLayout {
-            padding: 8px; spacing: 8px;
-            Rectangle {
-                min-width: 180px; preferred-width: 216px; max-width: 232px;
-                horizontal-stretch: 0;
-                background: Theme.sidebar; border-radius: 8px;
+    forward-focus: keyboard-scope;
+    keyboard-scope := FocusScope {
+    width: parent.width; height: parent.height;
+    KeyBinding { keys: @keys(Control + K); activated => { root.page = 1; search-field.focus(); } }
+    KeyBinding { keys: @keys(Control + L); activated => { root.page = 1; search-field.focus(); } }
+
+    // Chrome is explicitly positioned so child text cannot stretch the window grid.
+    Rectangle {
+        x: 0; y: 0; width: parent.width; height: 64px;
+        Text { x: 24px; y: 0; height: 64px; text: "Sillage"; font-size: 22px; font-weight: 700; color: Theme.text; vertical-alignment: center; }
+        ActionButton { x: max(180px, (parent.width - 576px) / 2); y: 8px; width: 48px; height: 48px; round: true;
+            icon: @image-url("../assets/ui/home.svg"); label: "Home"; selected: root.page == 0; clicked => { root.page = 0; }
+        }
+        search-field := SearchField {
+            x: max(236px, (parent.width - 464px) / 2); y: 8px;
+            width: min(480px, parent.width - 420px); height: 48px; text <=> root.query;
+            edited(text) => { root.page = 1; root.query-edited(text); }
+            accepted => { root.page = 1; root.search(); }
+        }
+        ActionButton { x: parent.width - 64px; y: 12px; quiet: true; round: true; icon: @image-url("../assets/ui/info.svg"); label: "About Sillage"; clicked => { root.show-about(); } }
+    }
+    Rectangle {
+        x: 8px; y: 64px; width: root.rail-width; height: root.height - 168px;
+        background: Theme.sidebar; border-radius: 8px;
+        VerticalLayout {
+            padding: 12px; spacing: 12px;
+            HorizontalLayout {
+                spacing: 4px;
+                ActionButton { icon: @image-url("../assets/ui/library.svg"); label: "Collapse or expand library"; quiet: true; clicked => { root.library-collapsed = !root.library-collapsed; } }
+                if !root.library-collapsed: Text { text: "Your Library"; color: Theme.muted; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
+                if !root.library-collapsed: ActionButton { icon: @image-url("../assets/ui/plus.svg"); label: "Save current song"; quiet: true; enabled: root.loaded && root.library-ready && root.selected-id != ""; clicked => { root.save-current(); } }
+            }
+            ActionButton {
+                text: root.library-collapsed ? "" : "Saved songs"; label: "Saved songs";
+                icon: @image-url("../assets/ui/heart.svg"); selected: root.page == 2; quiet: root.page != 2;
+                horizontal-stretch: 1; clicked => { root.page = 2; }
+            }
+            if !root.library-collapsed: Text { text: root.saved-rows.length + " songs · On this PC"; color: Theme.muted; font-size: 12px; }
+            if !root.library-collapsed && root.saved-rows.length > 0: TrackList {
+                rows: root.saved-rows; actions: false; selected-id: root.selected-id; busy: root.busy;
+                play(row) => { root.page = 2; root.play-track(row); }
+            }
+            if !root.library-collapsed && root.saved-rows.length == 0: VerticalLayout {
+                padding: 12px; spacing: 12px;
+                Text { text: "Your favorites live here"; color: Theme.text; font-weight: 600; wrap: word-wrap; }
+                Text { text: "Save a song with the heart button. Your library stays on this computer."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
+                ActionButton { text: "Find music"; round: true; filled: true; clicked => { root.page = 1; search-field.focus(); } }
+            }
+            Rectangle { vertical-stretch: 1; }
+            ActionButton { text: root.library-collapsed ? "" : "Open local file"; label: "Open local file"; icon: @image-url("../assets/ui/folder.svg"); quiet: true; horizontal-stretch: 1; enabled: !root.busy; clicked => { root.open-file(); } }
+        }
+    }
+    Rectangle {
+        x: root.rail-width + 16px; y: 64px;
+        width: root.width - root.rail-width - root.panel-reserve - 24px;
+        height: root.height - 168px;
+        background: Theme.surface; border-radius: 8px;
+        MusicSearch {
+            width: parent.width; height: parent.height;
+            page: root.page; results: root.results; saved-rows: root.saved-rows;
+            searching: root.searching; searched: root.searched; query: root.query;
+            search-error: root.search-error; busy: root.busy; selected-id: root.selected-id;
+            play-track(row) => { root.play-track(row); }
+            save-track(row) => { root.save-track(row); }
+            enqueue(row) => { root.enqueue(row); }
+            explore(query) => { root.query = query; root.page = 1; root.search(); }
+            show-saved => { root.page = 2; }
+        }
+    }
+    if root.panel-visible: Rectangle {
+        x: root.width - 312px; y: 64px; width: 304px; height: root.height - 168px;
+        background: Theme.surface; border-radius: 8px;
+        VerticalLayout {
+            padding: 16px; spacing: 16px;
+            HorizontalLayout {
+                Text { text: root.queue-open ? "Queue" : "Now playing"; color: Theme.text; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
+                ActionButton { icon: @image-url("../assets/ui/close.svg"); label: "Close side panel"; quiet: true; clicked => { root.queue-open = false; root.details-open = false; } }
+            }
+            if !root.queue-open: ScrollView {
                 VerticalLayout {
-                    padding: 16px; spacing: 8px;
-                    HorizontalLayout {
-                        padding-top: 8px; padding-bottom: 24px; spacing: 10px;
-                        Image { source: @image-url("../assets/sillage.png"); width: 32px; height: 32px; }
-                        Text { text: "Sillage"; color: Theme.text; font-size: 22px; font-weight: 700; vertical-alignment: center; }
-                    }
-                    ActionButton {
-                        text: "Search"; icon: @image-url("../assets/ui/search.svg");
-                        selected: true; horizontal-stretch: 1;
-                        clicked => { search-field.focus(); }
-                    }
-                    ActionButton {
-                        text: "Open a file"; icon: @image-url("../assets/ui/folder.svg");
-                        quiet: true; horizontal-stretch: 1; enabled: !root.busy;
-                        clicked => { root.open-file(); }
-                    }
-                    Rectangle { height: 24px; }
-                    Text { text: "Your music"; color: Theme.muted; font-size: 13px; font-weight: 600; }
-                    Rectangle { height: 8px; }
-                    HorizontalLayout {
-                        spacing: 12px;
-                        Rectangle {
-                            width: 40px; height: 40px; background: Theme.elevated; border-radius: 6px;
-                            Image { source: @image-url("../assets/ui/music.svg"); x: 10px; y: 10px; width: 20px; height: 20px; colorize: Theme.accent; }
-                        }
-                        VerticalLayout {
-                            alignment: center; spacing: 3px;
-                            Text { text: "YouTube Music"; color: Theme.text; font-size: 13px; font-weight: 600; }
-                            Text { text: "Public catalog"; color: Theme.muted; font-size: 12px; }
-                        }
-                    }
-                    Rectangle { vertical-stretch: 1; }
-                    ActionButton {
-                        text: "About Sillage"; icon: @image-url("../assets/ui/info.svg");
-                        quiet: true; horizontal-stretch: 1; clicked => { root.show-about(); }
-                    }
+                    spacing: 18px;
+                    Rectangle { height: 272px; Cover { artwork: root.track-artwork; width: parent.width; height: 272px; } }
+                    Text { text: root.track-title; color: Theme.text; font-size: 24px; font-weight: 700; wrap: word-wrap; }
+                    Text { text: root.track-artist; color: Theme.muted; font-size: 14px; wrap: word-wrap; }
+                    if root.loaded && root.selected-id != "": ActionButton { text: root.saved-current ? "Saved" : "Save to your library"; icon: @image-url("../assets/ui/heart.svg"); round: true; enabled: root.library-ready; selected: root.saved-current; clicked => { root.save-current(); } }
+                    Rectangle { height: 1px; background: Theme.line; }
+                    Text { text: "Playback"; color: Theme.text; font-weight: 700; }
+                    Text { text: root.status; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
+                    if root.loaded: Text { text: root.selected-id == "" ? "Local file" : "YouTube Music · Public stream"; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
+                    Text { text: "Seeking is not available yet."; color: Theme.muted; font-size: 12px; }
+                    Rectangle { height: 16px; }
                 }
             }
-            Rectangle {
-                background: Theme.surface; border-radius: 8px;
-                VerticalLayout {
-                    padding: 24px; spacing: 24px;
-                    HorizontalLayout {
-                        spacing: 12px;
-                        search-field := SearchField {
-                            text <=> root.query;
-                            horizontal-stretch: 1;
-                            edited(text) => { root.query-edited(text); }
-                            accepted => { root.search(); }
-                        }
-                        ActionButton { text: "Search"; round: true; filled: true; clicked => { root.search(); } }
-                    }
-                    MusicSearch {
-                        vertical-stretch: 1;
-                        results: root.results; searching: root.searching; searched: root.searched;
-                        query: root.query; search-error: root.search-error; busy: root.busy;
-                        selected-id: root.selected-id; playing: root.playing;
-                        play-track(row) => { root.play-track(row); }
-                        explore(query) => { root.query = query; root.search(); }
-                    }
-                }
+            if root.queue-open: VerticalLayout {
+                spacing: 12px;
+                Text { text: root.queue-rows.length + " songs in this session"; color: Theme.muted; font-size: 12px; }
+                TrackList { rows: root.queue-rows; actions: false; selected-id: root.selected-id; busy: root.busy; play(row) => { root.play-queued(row); } }
+                ActionButton { text: "Clear queue"; enabled: root.queue-rows.length > 0; clicked => { root.clear-queue(); } }
             }
         }
-        if root.error-message != "": Rectangle {
-            height: error-text.preferred-height + 24px; background: #33201e;
-            error-text := Text {
-                x: 24px; y: 12px; width: parent.width - 48px;
-                text: root.error-message; color: Theme.error; wrap: word-wrap; font-size: 13px;
-            }
-        }
-        PlayerControls {
-            height: 96px;
-            loaded: root.loaded; playing: root.playing; busy: root.busy;
-            status: root.status; volume <=> root.volume;
-            title: root.track-title; artist: root.track-artist;
-            artwork: root.track-artwork; duration-label: root.duration-label;
-            toggle-play => { root.toggle-play(); }
-            stop => { root.stop(); }
-            volume-changed(value) => { root.volume-changed(value); }
-        }
+    }
+    if root.error-message != "": Rectangle {
+        x: root.rail-width + 32px; y: root.height - 112px - self.height; width: root.width - root.rail-width - 64px;
+        height: error-text.preferred-height + 24px; background: #382625; border-radius: 6px;
+        error-text := Text { x: 12px; y: 12px; width: parent.width - 24px; text: root.error-message; color: Theme.error; wrap: word-wrap; font-size: 13px; }
+    }
+    PlayerControls {
+        x: 0; y: root.height - 96px; width: root.width; height: 96px;
+        loaded: root.loaded; playing: root.playing; busy: root.busy; status: root.status;
+        volume <=> root.volume; title: root.track-title; artist: root.track-artist; artwork: root.track-artwork;
+        duration-label: root.duration-label; elapsed: root.elapsed-label;
+        progress: root.duration-seconds > 0 ? root.position-seconds / root.duration-seconds : 0;
+        can-next: root.can-next; can-previous: root.can-previous; repeat: root.repeat; shuffle: root.shuffle;
+        saved: root.saved-current; queue-open: root.queue-open; details-open: root.details-open;
+        can-save: root.library-ready && root.selected-id != "";
+        toggle-play => { root.toggle-play(); } stop => { root.stop(); }
+        volume-changed(value) => { root.volume-changed(value); } mute => { root.mute(); }
+        next => { root.next-track(); } previous => { root.previous-track(); }
+        toggle-repeat => { root.repeat = !root.repeat; } toggle-shuffle => { root.shuffle = !root.shuffle; root.queue-mode-changed(); }
+        toggle-save => { root.save-current(); }
+        toggle-queue => { root.queue-open = !root.queue-open; }
+        toggle-details => { root.queue-open = false; root.details-open = !root.details-open; }
+    }
     }
 }

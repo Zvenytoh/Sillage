@@ -55,9 +55,10 @@ They will be described as supported only after the actual service flow works.
 ### A little restraint goes a long way
 
 The desktop follows the familiar composition of Spotify and YouTube Music:
-near-black surfaces, clear white type, compact artwork-led results, search at the
-top and a persistent playback bar across the bottom. Citron marks selection and
-keyboard focus. The application icon keeps its pine-and-citron identity.
+black and charcoal surfaces, white type, global search, a useful library on the
+left and a now-playing or queue pane on the right. The rebuilt transport spans
+the bottom. Selection, focus and volume are monochrome; color comes from artwork.
+The separate application icon keeps its existing identity.
 
 Keyboard access, visible focus, high contrast, reduced motion, and useful error states
 belong in the first release. Quiet operation matters as much as the first impression.
@@ -152,19 +153,27 @@ Use Windows 11 x64, Rust 1.92 or newer, and a working Windows linker/toolchain.
 cargo build --locked --release --bin sillage
 ```
 
-The preview opens on a public YouTube Music search. Search waits for a 200 ms pause
-in typing, displays up to 100 distinct tracks, and lets you start a result directly.
+The preview opens on a home surface with discovery searches. Global search waits
+for a 200 ms pause in typing, displays up to 100 distinct tracks, and lets you
+start a result directly. All combines a top result with song previews; Songs
+shows the complete result list. Ctrl+K or Ctrl+L focuses search.
 Network access and decoding run on background workers; audio arrives in bounded
-chunks. Play/Pause, Stop and volume remain available. A native file picker is optional.
+chunks. The session queue supports selection, previous/next, shuffle, repeat-one
+and natural advancement. Play/Pause, Stop, mute and keyboard-accessible volume
+remain available. The position rail follows consumed decoded audio and is read-only.
+A native file picker is optional.
 Local files open paused; selecting an online result starts playback. Standard builds
 write to `target/release/`.
 
 Artwork loads progressively after text results, with up to 32 bounded thumbnails
-per search and a neutral fallback when unavailable. The refreshed interface is
-implemented; actual rendering, DPI behavior and artwork retrieval still need checking.
+per search and a neutral fallback when unavailable. A dedicated worker keeps image
+downloads separate from search. Saved songs stay on this PC in a versioned local
+library; they are independent of a YouTube account. The library and session queue
+are capped at 500 songs each. The refreshed interface is implemented; actual
+rendering, DPI behavior and the new session/storage flows still need checking.
 
 This first connection supports direct public AAC/M4A streams. Album/artist pages,
-pagination, queue management, seeking, automatic network recovery and account
+pagination, queue recovery across launches, seeking, automatic network recovery and account
 sign-in are still pending. Unsupported tracks report an error with a manual retry.
 
 The [output check](docs/research/audio-output-check.md) and
@@ -172,6 +181,9 @@ The [output check](docs/research/audio-output-check.md) and
 [connected-preview record](docs/qa/public-search-playback.md) distinguish implementation, compilation
 and runtime verification. The agent has not launched this preview or used desktop
 automation. There is no packaged release yet.
+
+The [desktop rebuild record](docs/qa/desktop-ui-rebuild.md) explains the screenshot
+feedback, the replacement UI, safeguards and outstanding visual/runtime checks.
 
 | Read | For |
 | :--- | :--- |

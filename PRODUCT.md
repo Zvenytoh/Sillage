@@ -1,29 +1,24 @@
 # Sillage
 
-## Platform
+Native Windows desktop client for public YouTube Music search and playback.
+Initial target: Windows 11 x64. Application code is MIT, chosen by the user.
+Rust + Slint; no WebView, embedded Chromium, Electron or frontend JavaScript.
+The user's priorities are responsiveness, low resource use and a polished music UI.
+Symphonia through rodio handles audio. Performance budgets remain targets,
+not measured results. Keyboard accessibility, useful errors and accessible
+AboutSlint attribution are preserved requirements. Local files open paused;
+online playback starts only after the user selects Play on a result.
 
-Native Windows 11 desktop application, initially x64.
+Spotify Desktop is the primary visual and interaction reference. The user rejected
+both the cream/pine UI and the first sparse dark list, and explicitly rejected
+citron/green as the application accent. Preserve the existing app icon; the
+operational palette is black/charcoal/white. `DESIGN.md` records implementation.
 
-## Stack
+Current source includes public search/streaming, a saved local library and a
+session queue. No account sign-in, cloud library sync, remote album/artist pages,
+playlist editing, stream seeking or protected offline download is claimed.
 
-Rust + Slint; Symphonia decoding through rodio for local playback. No WebView.
-The user approved following the recorded roadmap and requested more substantial
-implementation progress while runtime permissions remain separate.
-
-## Users and purpose
-
-A personal YouTube Music listener wants a native, responsive, resource-conscious
-player with a carefully finished interface. Low consumption during long sessions
-matters. Performance budgets are targets, not measured results.
-
-## Current surface
-
-M1 is the local-file playback slice. It has no YouTube catalog or account UI.
-Opening a file prepares it paused. Audio output starts only on explicit Play.
-The application and the audible-output check are not authorized to launch yet.
-
-## Preserved commitments
-
-Use the generated Sillage app icon and established pine/citron identity.
-Provide keyboard-accessible controls, useful errors and an accessible Slint
-attribution. Application code is MIT, chosen by the user on 2026-10-25.
+Runtime permission is separate: the user explicitly chose static checks only.
+Do not launch the app, control the desktop, play audio or run unit/functional
+tests without the relevant explicit authorization. Their screenshot is evidence
+of the previous build, not proof of the rebuilt interface. No subagents.

@@ -1,7 +1,7 @@
 # Architecture cible
 
 Le socle local M1, la tranche recherche publique → lecture progressive et les
-pochettes bornées des premiers résultats sont implémentés. Stockage, cache durable,
+pochettes bornées des premiers résultats sont implémentés. Reprise de file, cache durable,
 navigation et mises à jour restent à construire.
 Le lecteur n'a pas été lancé ; son rendu et son comportement audio ne sont pas validés.
 
@@ -28,6 +28,9 @@ L'audio poursuit la lecture lorsque la fenêtre est masquée.
 | `src/main.rs`, `build.rs`, `Cargo.toml` | Entrée, compilation Slint, dépendances |
 | `src/app.rs` | État, commandes, réception des événements, invalidation des générations |
 | `src/search.rs` | Worker de recherche unique, dernière requête conservée, notification Slint |
+| `src/artwork.rs` | Worker d'images distinct, dernier lot seulement, réception/décodage bornés |
+| `src/session.rs` | File locale, historique, passage suivant/précédent, mélange et favoris UI |
+| `src/library.rs` | Bibliothèque locale versionnée, verrou Windows et écritures atomiques hors UI |
 | `src/model.rs` | Types partagés de pistes, pages, commandes et erreurs |
 | `src/queue.rs` | Ordre de lecture, répétition, mélange et déplacements |
 | `src/service/mod.rs` | Client du service et opérations métier |
@@ -67,10 +70,10 @@ audio ne fait ni réseau, ni décodage, ni attente du producteur ; il remplit un
 sous-alimentation par du silence. Ces bornes de code ne sont pas des mesures mémoire.
 
 Stop, remplacement de source et fermeture invalident les tâches précédentes.
-Le worker de recherche affiche d'abord les métadonnées, puis reçoit et réduit
-jusqu'à 32 pochettes. `image` décode hors UI avec bornes de dimensions/allocation ;
+Le worker de recherche affiche les métadonnées puis confie jusqu'à 32 pochettes
+à un worker distinct, sans attendre ses requêtes. `image` décode hors UI avec bornes de dimensions/allocation ;
 les pixels RGBA traversent la notification Slint, la création d'Image reste sur
-le thread UI. Maximum 192×192×4 octets par pochette conservée (textures GPU à part).
+le thread UI. Maximum 320×320×4 octets par pochette conservée (textures GPU à part).
 Les hôtes image sont une liste exacte distincte de l'audio ; aucune redirection.
 
 Une requête bloquée peut attendre son délai réseau avant de se terminer ;
@@ -78,6 +81,19 @@ l'annulation n'interrompt pas l'appel système immédiatement. Un échec nécess
 une reprise manuelle. Pas de compte, cookies, pagination, seek ou renouvellement
 automatique des URL dans cette tranche. L'UI sombre suit `DESIGN.md` ; le lecteur
 fixe pleine largeur reste indépendant du contenu de recherche.
+
+La reconstruction desktop ajoute `session.rs` (file de 500 titres et historique
+de 128 entrées) et `library.rs` (favoris locaux, pas une bibliothèque du compte).
+Les événements de fin sont dédupliqués avant l'avance automatique. La position
+est comptée sur les blocs PCM réellement consommés ; le silence de buffering
+n'avance pas le morceau. Notifications ≤4/s, position UI modifiée uniquement si
+la fenêtre est visible/non minimisée ; aucun timer de progression.
+
+La bibliothèque JSON version 1 est limitée à 2 Mio/500 titres. Un worker possède
+le verrou de partage exclusif Windows, charge avant d'autoriser l'écriture,
+écrit un fichier CreateNew, synchronise puis renomme. Formats inconnus, fichiers
+invalides et récupération déjà présente sont conservés. Le verrou OS est libéré
+à la sortie, y compris anormale. Pas de sérialisation de pochettes ou d'URL de flux.
 
 ## Décisions
 

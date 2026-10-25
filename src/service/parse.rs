@@ -24,6 +24,24 @@ fn text(value: &Value) -> String {
     text.chars().take(512).collect()
 }
 
+fn duration_ms(node: &Value) -> Option<u64> {
+    let raw = text(&node["fixedColumns"][0]["musicResponsiveListItemFixedColumnRenderer"]["text"]);
+    let mut seconds = 0_u64;
+    let mut parts = 0;
+    for part in raw.split(':') {
+        let value = part.parse::<u64>().ok()?;
+        if parts > 0 && value >= 60 {
+            return None;
+        }
+        seconds = seconds.checked_mul(60)?.checked_add(value)?;
+        parts += 1;
+    }
+    if !(2..=3).contains(&parts) {
+        return None;
+    }
+    seconds.checked_mul(1000)
+}
+
 fn track(node: &Value) -> Option<Track> {
     let column = |index: usize| {
         &node["flexColumns"][index]["musicResponsiveListItemFlexColumnRenderer"]["text"]
@@ -50,7 +68,7 @@ fn track(node: &Value) -> Option<Track> {
         id: id.to_owned(),
         title,
         artists,
-        duration_ms: None,
+        duration_ms: duration_ms(node),
         thumbnail: [
             "/thumbnail/musicThumbnailRenderer/thumbnail/thumbnails",
             "/thumbnailRenderer/musicThumbnailRenderer/thumbnail/thumbnails",
@@ -59,8 +77,13 @@ fn track(node: &Value) -> Option<Track> {
         .iter()
         .filter_map(|path| node.pointer(path).and_then(Value::as_array))
         .flatten()
-        .filter_map(|thumbnail| thumbnail["url"].as_str())
-        .find(|url| url.len() <= 4096)
+        .filter(|thumbnail| {
+            thumbnail["url"]
+                .as_str()
+                .is_some_and(|url| url.len() <= 4096)
+        })
+        .min_by_key(|thumbnail| thumbnail["width"].as_u64().unwrap_or(0).abs_diff(320))
+        .and_then(|thumbnail| thumbnail["url"].as_str())
         .map(str::to_owned),
     })
 }

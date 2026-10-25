@@ -11,7 +11,7 @@ use std::time::Duration;
 
 slint::include_modules!();
 
-fn command(ui: &AppWindow, playback: &Playback, command: PlaybackCommand) {
+pub(crate) fn command(ui: &AppWindow, playback: &Playback, command: PlaybackCommand) -> bool {
     let loading = matches!(
         &command,
         PlaybackCommand::OpenLocal(_) | PlaybackCommand::OpenRemote(_)
@@ -22,13 +22,15 @@ fn command(ui: &AppWindow, playback: &Playback, command: PlaybackCommand) {
         if loading {
             ui.set_busy(false);
         }
+        return false;
     } else if loading {
         ui.set_busy(true);
         ui.set_status("Preparing audio…".into());
     }
+    true
 }
 
-fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64) {
+fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64, ended: &AtomicU64) {
     if event.generation < current.load(Ordering::Acquire) {
         return;
     }
@@ -39,9 +41,30 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64) {
             ui.set_status(state.label().into());
             ui.set_playing(state == PlaybackState::Playing);
             ui.set_busy(state == PlaybackState::Loading);
+            if matches!(state, PlaybackState::Stopped | PlaybackState::Empty) {
+                ui.set_position_seconds(0.0);
+                ui.set_elapsed_label("0:00".into());
+            }
         }
-        PlaybackEventKind::Loaded { title, duration } => {
+        PlaybackEventKind::Loaded {
+            title,
+            duration,
+            local,
+        } => {
+            if local {
+                ui.set_selected_id("".into());
+                ui.set_track_artist("Local file".into());
+                ui.set_track_artwork(slint::Image::default());
+                ui.invoke_clear_queue();
+            }
             ui.set_track_title(title.into());
+            ui.set_duration_seconds(
+                duration
+                    .map(|duration| duration.as_secs_f32())
+                    .unwrap_or(0.0),
+            );
+            ui.set_position_seconds(0.0);
+            ui.set_elapsed_label("0:00".into());
             let label = match duration {
                 Some(duration) => {
                     let seconds = duration.as_secs();
@@ -55,8 +78,20 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64) {
         }
         PlaybackEventKind::VolumeChanged(value) => ui.set_volume(value * 100.0),
         PlaybackEventKind::Ended => {
+            if ended.swap(event.generation + 1, Ordering::AcqRel) == event.generation + 1 {
+                return;
+            }
             ui.set_playing(false);
             ui.set_status(PlaybackState::Ended.label().into());
+            ui.invoke_ended();
+        }
+        PlaybackEventKind::Position(position) => {
+            if !ui.get_busy() && ui.window().is_visible() && !ui.window().is_minimized() {
+                ui.set_position_seconds(position.as_secs_f32());
+                ui.set_elapsed_label(
+                    format!("{}:{:02}", position.as_secs() / 60, position.as_secs() % 60).into(),
+                );
+            }
         }
         PlaybackEventKind::Failed(message) => {
             ui.set_error_message(message.into());
@@ -70,6 +105,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let (events, receiver) = mpsc::sync_channel(32);
     let playback = Arc::new(Playback::spawn(events)?);
     let search = Arc::new(Search::new(ui.as_weak())?);
+    let library = crate::session::wire(&ui, playback.clone())?;
     let debounce = Rc::new(slint::Timer::default());
     {
         let weak = ui.as_weak();
@@ -112,25 +148,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
-    {
-        let weak = ui.as_weak();
-        let playback = playback.clone();
-        ui.on_play_track(move |row| {
-            if let Some(ui) = weak.upgrade() {
-                let track = sillage::model::Track {
-                    id: row.id.to_string(),
-                    title: row.title.to_string(),
-                    artists: vec![row.artist.to_string()],
-                    duration_ms: None,
-                    thumbnail: None,
-                };
-                ui.set_selected_id(row.id.clone());
-                ui.set_track_artist(row.artist.clone());
-                ui.set_track_artwork(row.artwork.clone());
-                command(&ui, &playback, PlaybackCommand::OpenRemote(track));
-            }
-        });
-    }
     let about: Rc<RefCell<Option<AboutWindow>>> = Rc::new(RefCell::new(None));
     {
         let weak = ui.as_weak();
@@ -141,9 +158,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             };
             match file_dialog::open_audio() {
                 Ok(Some(path)) => {
-                    ui.set_selected_id("".into());
-                    ui.set_track_artist("Local file".into());
-                    ui.set_track_artwork(slint::Image::default());
                     command(&ui, &playback, PlaybackCommand::OpenLocal(path));
                 }
                 Ok(None) => {}
@@ -205,6 +219,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let weak = ui.as_weak();
     let current = Arc::new(AtomicU64::new(0));
+    let ended = Arc::new(AtomicU64::new(0));
     let (start, started) = mpsc::channel();
     let callback_events = playback.callback_events();
     let bridge = std::thread::Builder::new()
@@ -218,8 +233,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 events.extend(callback_events.drain());
                 for event in events {
                     let current = current.clone();
+                    let ended = ended.clone();
                     if weak
-                        .upgrade_in_event_loop(move |ui| apply(&ui, event, &current))
+                        .upgrade_in_event_loop(move |ui| apply(&ui, event, &current, &ended))
                         .is_err()
                     {
                         return;
@@ -248,6 +264,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     drop(playback);
     drop(debounce);
     drop(search);
+    drop(library);
     let _ = bridge.join();
     result.map_err(Into::into)
 }

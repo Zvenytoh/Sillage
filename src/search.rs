@@ -1,6 +1,6 @@
 use crate::app::{AppWindow, SearchRow};
-use sillage::service::{Cancellation, Client, ServiceError};
-use slint::Model;
+use sillage::service::{Cancellation, Client};
+
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
@@ -30,6 +30,7 @@ impl Search {
             changed: Condvar::new(),
         });
         let worker_shared = shared.clone();
+        let artwork = crate::artwork::Artwork::new(ui.clone())?;
         let worker = std::thread::Builder::new()
             .name("sillage-search".into())
             .spawn(move || {
@@ -85,6 +86,13 @@ impl Search {
                                             title: track.title.into(),
                                             artist: track.artists.join(" · ").into(),
                                             artwork: slint::Image::default(),
+                                            duration: track
+                                                .duration_ms
+                                                .map(|ms| {
+                                                    format!("{}:{:02}", ms / 60000, ms / 1000 % 60)
+                                                })
+                                                .unwrap_or_default()
+                                                .into(),
                                         })
                                         .collect();
                                     ui.set_results(slint::ModelRc::new(slint::VecModel::from(
@@ -99,53 +107,7 @@ impl Search {
                     {
                         return;
                     }
-                    // Results arrive first; artwork is optional, bounded and cancelled with search.
-                    for (id, url) in thumbnails {
-                        if cancel.check().is_err() {
-                            break;
-                        }
-                        let bytes = match client.artwork(&url, &cancel) {
-                            Ok(bytes) => bytes,
-                            Err(
-                                ServiceError::Network
-                                | ServiceError::RateLimited
-                                | ServiceError::Cancelled,
-                            ) => break,
-                            Err(_) => continue,
-                        };
-                        let Some(pixels) = decode_artwork(bytes) else {
-                            continue;
-                        };
-                        let image_cancel = cancel.clone();
-                        if ui
-                            .upgrade_in_event_loop(move |ui| {
-                                if image_cancel.check().is_err() {
-                                    return;
-                                }
-                                let rows = ui.get_results();
-                                let Some(model) =
-                                    rows.as_any().downcast_ref::<slint::VecModel<SearchRow>>()
-                                else {
-                                    return;
-                                };
-                                for index in 0..model.row_count() {
-                                    if let Some(mut row) = model.row_data(index)
-                                        && row.id.as_str() == id
-                                    {
-                                        row.artwork = slint::Image::from_rgba8(pixels);
-                                        if ui.get_selected_id() == row.id {
-                                            ui.set_track_artwork(row.artwork.clone());
-                                        }
-                                        model.set_row_data(index, row);
-                                        break;
-                                    }
-                                }
-                            })
-                            .is_err()
-                        {
-                            return;
-                        }
-                    }
+                    artwork.submit(thumbnails, cancel);
                 }
             })?;
         Ok(Self {
@@ -177,23 +139,6 @@ impl Search {
         self.shared.changed.notify_one();
         Ok(())
     }
-}
-
-fn decode_artwork(bytes: Vec<u8>) -> Option<slint::SharedPixelBuffer<slint::Rgba8Pixel>> {
-    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes))
-        .with_guessed_format()
-        .ok()?;
-    let mut limits = image::Limits::default();
-    limits.max_image_width = Some(2048);
-    limits.max_image_height = Some(2048);
-    limits.max_alloc = Some(16 * 1024 * 1024);
-    reader.limits(limits);
-    let image = reader.decode().ok()?.thumbnail(192, 192).to_rgba8();
-    Some(slint::SharedPixelBuffer::clone_from_slice(
-        image.as_raw(),
-        image.width(),
-        image.height(),
-    ))
 }
 
 impl Drop for Search {

@@ -33,9 +33,11 @@ pub enum PlaybackEventKind {
     Loaded {
         title: String,
         duration: Option<Duration>,
+        local: bool,
     },
     VolumeChanged(f32),
     Ended,
+    Position(Duration),
     Failed(&'static str),
 }
 
@@ -196,6 +198,7 @@ struct Worker {
     callbacks: Arc<CallbackState>,
     decoder: Option<JoinHandle<()>>,
     source_failed: Arc<AtomicBool>,
+    source_position: Arc<AtomicU64>,
     remote: Option<Track>,
     client: Client,
 }
@@ -213,6 +216,7 @@ impl Worker {
             callbacks,
             decoder: None,
             source_failed: Arc::new(AtomicBool::new(false)),
+            source_position: Arc::new(AtomicU64::new(0)),
             remote: None,
             client: Client::default(),
         }
@@ -244,6 +248,7 @@ impl Worker {
         self.pending = Some(prepared.source);
         self.decoder = Some(prepared.worker);
         self.source_failed = prepared.failed;
+        self.source_position = prepared.position;
     }
 
     fn online(
@@ -281,6 +286,7 @@ impl Worker {
                 self.emit(PlaybackEventKind::Loaded {
                     title: track.title.clone(),
                     duration: track.duration_ms.map(Duration::from_millis),
+                    local: false,
                 });
                 self.remote = Some(track);
                 self.set_state(PlaybackState::Loading);
@@ -291,6 +297,7 @@ impl Worker {
                             self.emit(PlaybackEventKind::Loaded {
                                 title: track.title.clone(),
                                 duration,
+                                local: false,
                             });
                         }
                         self.apply(PlaybackCommand::Play, cancel);
@@ -323,7 +330,11 @@ impl Worker {
                         self.install(prepared);
                         self.path = Some(path);
                         self.remote = None;
-                        self.emit(PlaybackEventKind::Loaded { title, duration });
+                        self.emit(PlaybackEventKind::Loaded {
+                            title,
+                            duration,
+                            local: true,
+                        });
                         self.set_state(PlaybackState::Paused);
                     }
                     Ok(prepared) => {
@@ -332,7 +343,10 @@ impl Worker {
                         self.set_state(PlaybackState::Stopped);
                     }
                     Err(message) => {
-                        let restore = if previous == PlaybackState::Playing
+                        let restore = if self.remote.is_some() {
+                            self.clear_source();
+                            PlaybackState::Stopped
+                        } else if previous == PlaybackState::Playing
                             && self
                                 .output
                                 .as_ref()
@@ -415,6 +429,8 @@ impl Worker {
                         let player = Player::connect_new(output.mixer());
                         player.pause();
                         player.set_volume(self.volume);
+                        let clock_rate = u64::from(source.sample_rate().get())
+                            * u64::from(source.channels().get());
                         player.append(EndNotification {
                             inner: source,
                             events: self.events.clone(),
@@ -423,6 +439,11 @@ impl Worker {
                             notified: false,
                             callbacks: self.callbacks.clone(),
                             failed: self.source_failed.clone(),
+                            clock_rate,
+                            clock_samples: 0,
+                            next_position: clock_rate / 4,
+                            source_position: self.source_position.clone(),
+                            cancel: cancel.clone(),
                         });
                         self.output = Some((output, player));
                         self.set_state(PlaybackState::Playing);
@@ -484,15 +505,33 @@ struct EndNotification {
     notified: bool,
     callbacks: Arc<CallbackState>,
     failed: Arc<AtomicBool>,
+    clock_rate: u64,
+    clock_samples: u64,
+    next_position: u64,
+    source_position: Arc<AtomicU64>,
+    cancel: Cancellation,
 }
 
 impl Iterator for EndNotification {
     type Item = rodio::Sample;
     fn next(&mut self) -> Option<Self::Item> {
         let sample = self.inner.next();
+        if sample.is_some() {
+            self.clock_samples += 1;
+            if self.clock_samples >= self.next_position {
+                self.next_position = self.clock_samples + (self.clock_rate / 4).max(1);
+                let _ = self.events.try_send(PlaybackEvent {
+                    generation: self.id,
+                    kind: PlaybackEventKind::Position(Duration::from_secs_f64(
+                        self.source_position.load(Ordering::Acquire) as f64
+                            / self.clock_rate as f64,
+                    )),
+                });
+            }
+        }
         if sample.is_none() && !self.notified {
             self.notified = true;
-            if self.generation.load(Ordering::Acquire) == self.id {
+            if self.generation.load(Ordering::Acquire) == self.id && self.cancel.check().is_ok() {
                 if self.failed.load(Ordering::Acquire) {
                     self.callbacks.failed.store(self.id + 1, Ordering::Release);
                     let _ = self.events.try_send(PlaybackEvent {
