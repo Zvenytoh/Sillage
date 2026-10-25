@@ -18,7 +18,9 @@ Current source includes public search/streaming, a saved local library and a
 session queue. No account sign-in, cloud library sync, remote album/artist pages,
 playlist editing, stream seeking or protected offline download is claimed.
 
-Runtime permission is separate: the user explicitly chose static checks only.
-Do not launch the app, control the desktop, play audio or run unit/functional
-tests without the relevant explicit authorization. Their screenshot is evidence
-of the previous build, not proof of the rebuilt interface. No subagents.
+Runtime permission is separate. The latest request explicitly authorizes opening
+and visually checking the app for the French home redesign, superseding the
+previous static-only choice for that UI scope. Audio playback, unit/functional
+tests and account access still require their own authorization. Their TubeFast
+screenshot is a design reference, not evidence of Sillage's current rendering.
+The new French home design remains a brainstorming draft. No subagents.
