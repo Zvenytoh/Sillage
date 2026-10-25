@@ -1,9 +1,40 @@
 # Architecture cible
 
-Le socle local M1, la tranche recherche publique → lecture progressive et les
-pochettes bornées des premiers résultats sont implémentés. Reprise de file, cache durable,
-navigation et mises à jour restent à construire.
-Le lecteur n'a pas été lancé ; son rendu et son comportement audio ne sont pas validés.
+Le socle local M1, la recherche publique → lecture progressive et l'accueil
+français sont implémentés. Le contrôle visuel natif de la nouvelle révision,
+la reprise de file, les comptes et les mises à jour restent à faire.
+La compilation ne valide ni le rendu ni le comportement audio.
+
+## Révision accueil français
+
+`catalog.rs` remplace `search.rs` : un worker pour recherche/accueil, une requête
+active et une attente remplaçable. La navigation conserve les modèles déjà reçus ;
+une nouvelle demande annule la précédente. Cache normalisé `home-fr.json` ≤2 Mio,
+fraîcheur six heures, actualisation explicite, ancien contenu conservé sur panne.
+`Client::home` suit la playlist « Les 20 clips tendance France » retournée par
+`FEmusic_charts`, puis les nouveaux clips de `FEmusic_explore` (24 maximum).
+Aucun classement simulé, compte ou personnalisation supposée. 429 arrête le lot.
+
+`history.rs` contient l'historique pur ; `session.rs` possède favoris, récents et
+images, `view.rs` les conversions Slint. Qualification après 30 secondes PCM
+consommées, ou moitié d'un morceau connu de moins de 60 secondes ; 200 récents
+dédupliqués. Les notifications cachées alimentent l'historique sans rafraîchir
+le compteur visible. Sauvegarde uniquement si modifié, sur qualification,
+pause, changement et fermeture, jamais à chaque position. JSON v1 lu en favoris,
+v2 écrit au prochain changement ; limites 500 favoris/200 récents/2 Mio.
+
+`artwork.rs` partage une file de 64 demandes, courant avant visible, un fetch
+actif. Même identifiant dans toutes les vues, sans annulation lors d'une recherche.
+Référence publique validée ou miniature i.ytimg.com du même videoId ; aucun
+homonyme. Réception ≤512 Kio, décodage ≤2048²/16 Mio, réduction 384 px (visible)
+ou 512 px (courant). Cache encodé ≤128 Mio/1024 fichiers ; buffers conservés
+≤32 Mio, références évincées aussi dans les vues. Textures GPU non mesurées.
+`cache.rs` fournit lectures bornées et écritures temporaires atomiques.
+
+Le volume Slint est l'état immédiat de l'interaction. Le worker conserve la
+dernière valeur atomique avec au plus une notification en attente ; les anciens
+accusés `VolumeChanged` ne repositionnent plus la poignée. Cette correction
+statique reste à vérifier par glissement/clavier dans le lecteur natif.
 
 ## Flux principal
 
@@ -27,7 +58,7 @@ L'audio poursuit la lecture lorsque la fenêtre est masquée.
 |---|---|
 | `src/main.rs`, `build.rs`, `Cargo.toml` | Entrée, compilation Slint, dépendances |
 | `src/app.rs` | État, commandes, réception des événements, invalidation des générations |
-| `src/search.rs` | Worker de recherche unique, dernière requête conservée, notification Slint |
+| `src/catalog.rs` | Worker accueil/recherche, dernière demande conservée, cache normalisé |
 | `src/artwork.rs` | Worker d'images distinct, dernier lot seulement, réception/décodage bornés |
 | `src/session.rs` | File locale, historique, passage suivant/précédent, mélange et favoris UI |
 | `src/library.rs` | Bibliothèque locale versionnée, verrou Windows et écritures atomiques hors UI |

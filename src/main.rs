@@ -2,10 +2,12 @@
 
 mod app;
 mod artwork;
+mod cache;
+mod catalog;
 mod library;
 mod platform;
-mod search;
 mod session;
+mod view;
 
 fn main() {
     if let Err(error) = app::run() {

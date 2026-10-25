@@ -10,6 +10,11 @@ export component SongRow inherits Rectangle {
     in property <bool> busy;
     in property <bool> actions: true;
     callback play(); callback save(); callback enqueue();
+    callback request-artwork(SearchRow);
+    private property <string> requested-id;
+    function request-image() { if root.track.id != "" && root.requested-id != root.track.id { root.requested-id = root.track.id; root.request-artwork(root.track); } }
+    init => { root.request-image(); }
+    changed track => { root.request-image(); }
     height: 62px; border-radius: 4px;
     background: root.selected ? #2b2b2b : area.has-hover ? #202020 : transparent;
     area := TouchArea { double-clicked => { if !root.busy { root.play(); } } }
@@ -29,16 +34,16 @@ export component SongRow inherits Rectangle {
             Text { text: root.track.artist == "" ? "YouTube Music" : root.track.artist; color: Theme.muted; font-size: 12px; overflow: elide; min-width: 0px; }
         }
         if root.actions: ActionButton {
-            icon: @image-url("../assets/ui/heart.svg"); label: "Toggle saved song: " + root.track.title;
+            icon: @image-url("../assets/ui/heart.svg"); label: "Ajouter ou retirer des favoris : " + root.track.title;
             quiet: true; round: true; enabled: !root.busy; clicked => { root.save(); }
         }
         if root.actions: ActionButton {
-            icon: @image-url("../assets/ui/plus.svg"); label: "Add to queue: " + root.track.title;
+            icon: @image-url("../assets/ui/plus.svg"); label: "Ajouter à la file : " + root.track.title;
             quiet: true; round: true; enabled: !root.busy; clicked => { root.enqueue(); }
         }
         if root.actions: Text { text: root.track.duration; width: 42px; color: Theme.muted; font-size: 12px; horizontal-alignment: right; vertical-alignment: center; }
         ActionButton {
-            icon: @image-url("../assets/ui/play.svg"); label: "Play " + root.track.title;
+            icon: @image-url("../assets/ui/play.svg"); label: "Écouter " + root.track.title;
             quiet: true; round: true; enabled: !root.busy; clicked => { root.play(); }
         }
     }
@@ -50,9 +55,11 @@ export component TrackList inherits ListView {
     in property <bool> busy;
     in property <bool> actions: true;
     callback play(SearchRow); callback save(SearchRow); callback enqueue(SearchRow);
+    callback request-artwork(SearchRow);
     for row[index] in root.rows: SongRow {
         track: row; number: root.actions ? index + 1 : 0; width: parent.width;
         selected: root.selected-id == row.id; busy: root.busy; actions: root.actions;
         play => { root.play(row); } save => { root.save(row); } enqueue => { root.enqueue(row); }
+        request-artwork(row) => { root.request-artwork(row); }
     }
 }

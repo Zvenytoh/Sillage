@@ -17,17 +17,18 @@ pub(super) struct Prepared {
 }
 
 pub(super) fn prepare(path: &Path) -> Result<Prepared, &'static str> {
-    let file =
-        File::open(path).map_err(|_| "This file could not be opened. Choose another file.")?;
+    let file = File::open(path)
+        .map_err(|_| "Ce fichier ne peut pas être ouvert. Choisissez-en un autre.")?;
     if !file
         .metadata()
-        .map_err(|_| "The file is unavailable.")?
+        .map_err(|_| "Le fichier est indisponible.")?
         .is_file()
     {
-        return Err("Choose a regular audio file.");
+        return Err("Choisissez un fichier audio classique.");
     }
-    let decoder = Decoder::try_from(file)
-        .map_err(|_| "This file could not be decoded. Try MP3, M4A, WAV, FLAC or Ogg Vorbis.")?;
+    let decoder = Decoder::try_from(file).map_err(
+        |_| "Décodage impossible. Essayez un fichier MP3, M4A, WAV, FLAC ou Ogg Vorbis.",
+    )?;
     prepare_decoder(Box::new(decoder), Arc::new(AtomicBool::new(false)))
 }
 
@@ -43,7 +44,7 @@ pub(super) fn prepare_online(
         .with_hint("m4a")
         .with_seekable(false)
         .build()
-        .map_err(|_| "The audio stream could not be decoded. Try another track.")?;
+        .map_err(|_| "Le flux audio ne peut pas être décodé. Essayez un autre titre.")?;
     prepare_decoder(Box::new(decoder), failed)
 }
 
@@ -54,7 +55,7 @@ fn prepare_decoder(
     let channels = decoder.channels();
     let rate = decoder.sample_rate();
     if channels.get() > 8 || rate.get() > 192_000 {
-        return Err("This audio format exceeds the local player's supported dimensions.");
+        return Err("Ce format audio dépasse les limites du lecteur.");
     }
     let duration = decoder.total_duration();
     let decoder_failed = failed.clone();
@@ -80,7 +81,7 @@ fn prepare_decoder(
                 }
             }
         })
-        .map_err(|_| "The decoder worker could not start. Try again.")?;
+        .map_err(|_| "Le décodeur ne peut pas démarrer. Réessayez.")?;
     Ok(Prepared {
         source: Box::new(PcmSource {
             receiver,

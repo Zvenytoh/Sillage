@@ -1,99 +1,86 @@
-use crate::app::{AppWindow, SearchRow};
+use crate::app::AppWindow;
+use sillage::history::LibrarySnapshot;
 use sillage::model::Track;
-use sillage::service::parse::valid_id;
 use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
+#[derive(Default)]
+struct State {
+    pending: Option<LibrarySnapshot>,
+    loaded: Option<LibrarySnapshot>,
+    stopped: bool,
+}
 pub(crate) struct Library {
-    sender: Option<mpsc::SyncSender<Vec<Track>>>,
+    shared: Arc<(Mutex<State>, Condvar)>,
     ready: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
 }
 
 impl Library {
     pub fn spawn(ui: slint::Weak<AppWindow>) -> std::io::Result<Self> {
-        let directory = std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .ok_or_else(|| std::io::Error::other("Local application data is unavailable."))?
-            .join("Sillage");
-        let (sender, receiver) = mpsc::sync_channel::<Vec<Track>>(8);
+        let directory = crate::cache::directory()
+            .ok_or_else(|| std::io::Error::other("Le dossier de données est indisponible."))?;
+        let shared = Arc::new((Mutex::new(State::default()), Condvar::new()));
+        let worker_shared = shared.clone();
         let ready = Arc::new(AtomicBool::new(false));
         let worker_ready = ready.clone();
-        let worker = std::thread::Builder::new().name("sillage-library".into()).spawn(move || {
-            let _lock = match library_lock(&directory) {
-                Ok(lock) => lock,
-                Err(_) => {
-                    let _ = ui.upgrade_in_event_loop(|ui| ui.set_error_message("Local library storage is unavailable or already in use by another Sillage window. Saving is disabled in this window.".into()));
-                    return;
-                }
+        let worker=std::thread::Builder::new().name("sillage-library".into()).spawn(move|| {
+            let Ok(_lock)=library_lock(&directory) else {
+                let _=ui.upgrade_in_event_loop(|ui|ui.set_error_message("La bibliothèque est indisponible ou utilisée dans une autre fenêtre. Vos données sont conservées.".into())); return;
             };
-            let path = directory.join("library.json");
-            match load(&path) {
-                Ok(tracks) => {
-                    worker_ready.store(true, Ordering::Release);
-                    if ui.upgrade_in_event_loop(move |ui| {
-                        let rows: Vec<_> = tracks.into_iter().map(|track| SearchRow {
-                            id: track.id.into(), title: track.title.into(), artist: track.artists.join(" · ").into(),
-                            artwork: slint::Image::default(),
-                            duration: track.duration_ms.map(|ms| format!("{}:{:02}", ms / 60000, ms / 1000 % 60)).unwrap_or_default().into(),
-                        }).collect();
-                        ui.set_saved_rows(slint::ModelRc::new(slint::VecModel::from(rows)));
-                        ui.set_library_ready(true);
-                    }).is_err() { return; }
-                }
-                Err(()) => {
-                    let _ = ui.upgrade_in_event_loop(|ui| ui.set_error_message("Your saved library could not be read. The existing file has been preserved; saving is disabled.".into()));
-                    return;
-                }
-            }
-            while let Ok(tracks) = receiver.recv() {
-                if save(&path, tracks).is_err() {
-                    let _ = ui.upgrade_in_event_loop(|ui| ui.set_error_message("Your library could not be saved. Your previous file is preserved; the latest changes remain in this session.".into()));
+            let path=directory.join("library.json");
+            let snapshot=match load(&path) { Ok(snapshot)=>snapshot, Err(())=>{
+                let _=ui.upgrade_in_event_loop(|ui|ui.set_error_message("La bibliothèque ne peut pas être lue. Le fichier existant est conservé et la sauvegarde désactivée.".into())); return;
+            }};
+            if let Ok(mut state)=worker_shared.0.lock() { state.loaded=Some(snapshot); } else { return; }
+            worker_ready.store(true,Ordering::Release);
+            if ui.upgrade_in_event_loop(|ui|ui.invoke_library_loaded()).is_err() { return; }
+            loop {
+                let Ok(state)=worker_shared.0.lock() else { return; };
+                let Ok(mut state)=worker_shared.1.wait_while(state,|state|state.pending.is_none()&&!state.stopped) else { return; };
+                let Some(snapshot)=state.pending.take() else { return; }; drop(state);
+                if save(&path,snapshot).is_err() {
+                    let _=ui.upgrade_in_event_loop(|ui|ui.set_error_message("La sauvegarde a échoué. Le fichier précédent est conservé ; vos changements restent dans cette session.".into()));
                 }
             }
         })?;
         Ok(Self {
-            sender: Some(sender),
+            shared,
             ready,
             worker: Some(worker),
         })
     }
-
-    pub fn save(&self, rows: &[SearchRow]) -> Result<(), &'static str> {
+    pub fn take_loaded(&self) -> Option<LibrarySnapshot> {
+        self.shared.0.lock().ok()?.loaded.take()
+    }
+    pub fn save(&self, snapshot: &LibrarySnapshot) -> Result<(), &'static str> {
         if !self.ready.load(Ordering::Acquire) {
-            return Err("Your library is not ready for saving.");
+            return Err("La bibliothèque n'est pas encore prête.");
         }
-        let tracks = rows
-            .iter()
-            .map(|row| Track {
-                id: row.id.to_string(),
-                title: row.title.to_string(),
-                artists: vec![row.artist.to_string()],
-                duration_ms: None,
-                thumbnail: None,
-            })
-            .collect();
-        self.sender
-            .as_ref()
-            .ok_or("Library storage is unavailable.")?
-            .try_send(tracks)
-            .map_err(|_| "Library storage is busy. Try saving again.")
+        let mut state = self
+            .shared
+            .0
+            .lock()
+            .map_err(|_| "La sauvegarde est indisponible.")?;
+        state.pending = Some(snapshot.clone());
+        self.shared.1.notify_one();
+        Ok(())
     }
 }
-
 impl Drop for Library {
     fn drop(&mut self) {
-        self.sender.take();
+        if let Ok(mut state) = self.shared.0.lock() {
+            state.stopped = true;
+        }
+        self.shared.1.notify_one();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }
     }
 }
-
 fn library_lock(directory: &Path) -> std::io::Result<File> {
     fs::create_dir_all(directory)?;
     let mut options = OpenOptions::new();
@@ -101,82 +88,86 @@ fn library_lock(directory: &Path) -> std::io::Result<File> {
     #[cfg(windows)]
     {
         use std::os::windows::fs::OpenOptionsExt;
-        // Windows releases the exclusive sharing handle even after an abnormal exit.
         options.share_mode(0);
     }
     options.open(directory.join("library.lock"))
 }
-
-fn load(path: &Path) -> Result<Vec<Track>, ()> {
-    let file = match File::open(path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+fn validate(snapshot: &LibrarySnapshot) -> bool {
+    let unique = |tracks: Vec<&Track>| {
+        let mut ids = std::collections::HashSet::new();
+        tracks
+            .iter()
+            .all(|track| track.valid() && ids.insert(&track.id))
+    };
+    snapshot.favorites.len() <= 500
+        && snapshot.recent.len() <= 200
+        && unique(snapshot.favorites.iter().collect())
+        && unique(snapshot.recent.iter().map(|recent| &recent.track).collect())
+}
+fn load(path: &Path) -> Result<LibrarySnapshot, ()> {
+    let bytes = match crate::cache::read(path, 2 * 1024 * 1024) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(LibrarySnapshot::default());
+        }
         Err(_) => return Err(()),
     };
-    let mut bytes = Vec::new();
-    file.take(2 * 1024 * 1024 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| ())?;
-    if bytes.len() > 2 * 1024 * 1024 {
-        return Err(());
-    }
     let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| ())?;
-    if value["version"].as_u64() != Some(1) {
-        return Err(());
+    let snapshot = match value["version"].as_u64() {
+        Some(1) => {
+            let items = value["tracks"]
+                .as_array()
+                .filter(|items| items.len() <= 500)
+                .ok_or(())?;
+            let favorites = items
+                .iter()
+                .map(|item| {
+                    Ok(Track {
+                        id: item["id"].as_str().ok_or(())?.into(),
+                        title: item["title"].as_str().ok_or(())?.into(),
+                        artists: vec![item["artist"].as_str().ok_or(())?.into()],
+                        duration_ms: None,
+                        thumbnail: None,
+                    })
+                })
+                .collect::<Result<Vec<_>, ()>>()?;
+            LibrarySnapshot {
+                favorites,
+                recent: Vec::new(),
+            }
+        }
+        Some(2) => serde_json::from_value(value).map_err(|_| ())?,
+        _ => return Err(()),
+    };
+    if validate(&snapshot) {
+        Ok(snapshot)
+    } else {
+        Err(())
     }
-    let tracks = value["tracks"]
-        .as_array()
-        .filter(|tracks| tracks.len() <= 500)
-        .ok_or(())?;
-    let mut seen = std::collections::HashSet::new();
-    tracks
-        .iter()
-        .map(|track| {
-            let id = track["id"]
-                .as_str()
-                .filter(|id| valid_id(id) && seen.insert(id.to_string()))
-                .ok_or(())?;
-            let title = track["title"]
-                .as_str()
-                .filter(|title| !title.is_empty() && title.chars().count() <= 512)
-                .ok_or(())?;
-            let artist = track["artist"]
-                .as_str()
-                .filter(|artist| artist.chars().count() <= 4096)
-                .ok_or(())?;
-            Ok(Track {
-                id: id.to_string(),
-                title: title.to_string(),
-                artists: vec![artist.to_string()],
-                duration_ms: None,
-                thumbnail: None,
-            })
-        })
-        .collect()
 }
-
-fn save(path: &Path, tracks: Vec<Track>) -> Result<(), ()> {
-    if tracks.len() > 500 {
+fn save(path: &Path, snapshot: LibrarySnapshot) -> Result<(), ()> {
+    if !validate(&snapshot) {
         return Err(());
     }
-    let tracks: Vec<_> = tracks.into_iter().map(|track| serde_json::json!({ "id": track.id, "title": track.title, "artist": track.artists.join(" · ") })).collect();
-    let bytes = serde_json::to_vec(&serde_json::json!({ "version": 1, "tracks": tracks }))
-        .map_err(|_| ())?;
+    let bytes = serde_json::to_vec(
+        &serde_json::json!({"version":2,"favorites":snapshot.favorites,"recent":snapshot.recent}),
+    )
+    .map_err(|_| ())?;
     if bytes.len() > 2 * 1024 * 1024 {
         return Err(());
     }
-    fs::create_dir_all(path.parent().ok_or(())?).map_err(|_| ())?;
+    // Keep the established recovery filename and never overwrite a pre-existing pending file.
     let pending = path.with_extension("json.pending");
-    // CreateNew refuses an existing recovery file; only our own new temporary file may be removed.
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&pending)
         .map_err(|_| ())?;
+    use std::io::Write;
     let result = file.write_all(&bytes).and_then(|()| file.sync_all());
     drop(file);
     if result.is_err() || fs::rename(&pending, path).is_err() {
-        let _ = fs::remove_file(&pending);
+        let _ = fs::remove_file(pending);
         return Err(());
     }
     Ok(())
@@ -185,6 +176,7 @@ fn save(path: &Path, tracks: Vec<Track>) -> Result<(), ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     struct Fixture(PathBuf);
     impl Fixture {
         fn new() -> Self {
@@ -209,12 +201,27 @@ mod tests {
         }
     }
     #[test]
+    fn v1_migration_preserves_favorites() {
+        let fixture = Fixture::new();
+        let path = fixture.0.join("library.json");
+        let bytes =
+            br#"{"version":1,"tracks":[{"id":"abcdefghijk","title":"Titre","artist":"Artiste"}]}"#;
+        fs::write(&path, bytes).expect("fixture");
+        let snapshot = load(&path).expect("v1 supported");
+        assert_eq!(snapshot.favorites[0].title, "Titre");
+        assert_eq!(snapshot.favorites[0].artists, ["Artiste"]);
+        assert!(snapshot.recent.is_empty());
+        assert_eq!(fs::read(&path).expect("read"), bytes);
+        save(&path, snapshot.clone()).expect("v2 write");
+        assert_eq!(load(&path).expect("v2 read").favorites, snapshot.favorites);
+    }
+    #[test]
     fn pending_recovery_file_prevents_overwriting_previous_library() {
         let fixture = Fixture::new();
         let path = fixture.0.join("library.json");
         fs::write(&path, b"previous-library").expect("previous");
         fs::write(path.with_extension("json.pending"), b"recovery").expect("pending");
-        assert!(save(&path, Vec::new()).is_err());
+        assert!(save(&path, LibrarySnapshot::default()).is_err());
         assert_eq!(
             fs::read(&path).expect("previous preserved"),
             b"previous-library"

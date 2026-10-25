@@ -4,130 +4,138 @@ import { ActionButton, Cover } from "components.slint";
 import { TrackList, SongRow } from "tracks.slint";
 import { SearchRow } from "model.slint";
 
-component GenreTile inherits Rectangle {
-    in property <string> title; in property <string> subtitle; in property <color> tint;
-    callback clicked();
-    min-height: 150px; background: root.tint; border-radius: 8px;
-    VerticalLayout {
-        padding: 20px; spacing: 8px;
-        Text { text: root.title; color: Theme.text; font-size: 24px; font-weight: 700; overflow: elide; }
-        Text { text: root.subtitle; color: Theme.text; font-size: 12px; wrap: word-wrap; }
-        Rectangle { vertical-stretch: 1; }
-        ActionButton { text: "Explore"; icon: @image-url("../assets/ui/search.svg"); quiet: true; clicked => { root.clicked(); } }
+component MusicCard inherits Rectangle {
+    in property <SearchRow> track;
+    in property <bool> selected;
+    in property <bool> busy;
+    callback play(); callback request-artwork(SearchRow);
+    private property <string> requested-id;
+    function request-image() { if root.track.id != "" && root.requested-id != root.track.id { root.requested-id = root.track.id; root.request-artwork(root.track); } }
+    init => { root.request-image(); }
+    changed track => { root.request-image(); }
+    forward-focus: card-focus;
+    accessible-role: button;
+    accessible-label: "Écouter " + root.track.title;
+    accessible-enabled: !root.busy;
+    accessible-action-default => { if !root.busy { root.play(); } }
+    border-width: card-focus.has-focus ? 1px : 0px;
+    border-color: Theme.accent;
+    min-width: 100px; max-width: 200px; preferred-width: 184px; height: 250px; border-radius: 6px;
+    background: hover.has-hover ? #ffffff08 : transparent;
+    private property <length> art-size: min(self.width, 184px);
+    Cover { width: root.art-size; height: root.art-size; artwork: root.track.artwork; }
+    Rectangle { y: root.art-size + 10px; width: parent.width; height: 36px; clip: true;
+        Text { width: parent.width; height: 36px; text: root.track.title; color: root.selected ? Theme.accent : Theme.text; font-size: 14px; font-weight: 600; wrap: word-wrap; overflow: elide; }
+    }
+    Text { y: root.art-size + 49px; width: parent.width; text: root.track.artist; color: Theme.muted; font-size: 12px; overflow: elide; }
+    hover := TouchArea { double-clicked => { if !root.busy { root.play(); } } }
+    card-focus := FocusScope { width: 0; enabled: !root.busy;
+        key-pressed(event) => { if event.text == Key.Space || event.text == Key.Return { root.play(); return accept; } return reject; }
+    }
+    ActionButton { x: root.art-size - 46px; y: root.art-size - 47px; width: 38px; height: 38px; accented: true; round: true;
+        icon: @image-url("../assets/ui/play.svg"); label: "Écouter " + root.track.title; enabled: !root.busy;
+        visible: root.selected || hover.has-hover || card-focus.has-focus || self.has-focus;
+        clicked => { root.play(); }
     }
 }
 
-component TrackCard inherits Rectangle {
-    in property <SearchRow> track;
-    in property <bool> busy;
-    callback play();
-    min-width: 120px; max-width: 220px; height: 280px; border-radius: 8px;
-    background: touch.has-hover ? #262626 : #181818;
-    Cover { x: 12px; y: 12px; width: min(parent.width - 24px, 196px); height: self.width; artwork: root.track.artwork; }
-    Text { x: 12px; y: min(parent.width - 24px, 196px) + 26px; width: parent.width - 24px; text: root.track.title; font-size: 14px; font-weight: 600; color: Theme.text; overflow: elide; }
-    Text { x: 12px; y: min(parent.width - 24px, 196px) + 52px; width: parent.width - 24px; text: root.track.artist; font-size: 12px; color: Theme.muted; overflow: elide; }
-    touch := TouchArea { double-clicked => { if !root.busy { root.play(); } } }
-    ActionButton { x: parent.width - 58px; y: min(parent.width - 24px, 196px) - 36px; width: 40px; height: 40px; filled: true; round: true; enabled: !root.busy; icon: @image-url("../assets/ui/play.svg"); label: "Play " + root.track.title; clicked => { root.play(); } }
-}
-
-export component MusicSearch inherits Rectangle {
-    in property <[SearchRow]> results; in property <[SearchRow]> saved-rows;
+export component MusicLibrary inherits Rectangle {
+    private property <[int]> card-indices: root.width > 1100px ? [0,1,2,3,4,5] : [0,1,2,3];
+    in property <[SearchRow]> results; in property <[SearchRow]> saved-rows; in property <[SearchRow]> recent-rows;
+    in property <[SearchRow]> trending-rows; in property <[SearchRow]> discovery-rows;
+    in property <bool> home-loading; in property <string> home-error; in property <string> home-source;
     in property <bool> searching; in property <bool> searched; in property <bool> busy;
     in property <string> selected-id; in property <string> search-error; in property <string> query;
-    in property <int> page; // 0 home, 1 search, 2 saved
+    in property <int> page;
     in-out property <bool> songs-only;
     callback play-track(SearchRow); callback save-track(SearchRow); callback enqueue(SearchRow);
-    callback explore(string); callback show-saved();
-    VerticalLayout {
-        padding: 24px; spacing: 20px;
-        HorizontalLayout {
-            spacing: 8px;
-            ActionButton { text: root.page == 2 ? "Saved songs" : "All"; round: true; filled: !root.songs-only; selected: !root.songs-only; clicked => { root.songs-only = false; } }
-            if root.page == 1: ActionButton { text: "Songs"; round: true; filled: root.songs-only; clicked => { root.songs-only = true; } }
+    callback request-artwork(SearchRow); callback refresh-home(); callback navigate(int);
+    if root.page == 0: ScrollView {
+        VerticalLayout { padding-left: 28px; padding-right: 28px; padding-bottom: 28px; spacing: 22px;
+            HorizontalLayout {
+                Text { text: "Accueil"; color: Theme.text; font-size: 30px; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
+                ActionButton { text: "Actualiser"; quiet: true; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
+            }
+            if root.recent-rows.length > 0: VerticalLayout { spacing: 16px;
+                HorizontalLayout { Text { text: "Écoutés récemment"; color: Theme.text; font-size: 21px; font-weight: 700; horizontal-stretch: 1; vertical-alignment: center; } ActionButton { text: "Tout voir"; quiet: true; clicked => { root.navigate(3); } } }
+                HorizontalLayout { spacing: 18px;
+                    for index in root.card-indices: MusicCard { track: root.recent-rows[index]; visible: root.recent-rows.length > index; busy: root.busy; selected: root.selected-id == root.recent-rows[index].id;
+                        play => { root.play-track(root.recent-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
+                    }
+                }
+            }
+            if root.recent-rows.length == 0: Text { text: "Vos écoutes récentes apparaîtront ici après vos premiers morceaux."; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
+            if root.home-loading && root.trending-rows.length == 0: VerticalLayout { spacing: 12px;
+                Text { text: "Chargement de votre sélection…"; color: Theme.muted; }
+                for skeleton in [0,1,2]: Rectangle { height: 48px; background: #ffffff08; border-radius: 5px; }
+            }
+            if root.home-error != "": VerticalLayout { spacing: 8px;
+                Text { text: root.home-error; color: Theme.error; wrap: word-wrap; font-size: 13px; }
+                ActionButton { text: "Réessayer"; enabled: !root.home-loading; clicked => { root.refresh-home(); } }
+            }
+            if root.trending-rows.length > 0: VerticalLayout { spacing: 12px;
+                Text { text: "Tendances en France"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                Text { text: root.home-source; color: Theme.muted; font-size: 11px; wrap: word-wrap; }
+                for pair in [0,1,2,3]: HorizontalLayout { spacing: 18px;
+                    for side in [0,1]: SongRow {
+                        track: root.trending-rows[pair * 2 + side]; number: pair * 2 + side + 1;
+                        visible: root.trending-rows.length > pair * 2 + side; busy: root.busy; actions: false;
+                        selected: root.selected-id == self.track.id;
+                        play => { root.play-track(root.trending-rows[pair * 2 + side]); }
+                        request-artwork(row) => { root.request-artwork(row); }
+                    }
+                }
+            }
+            if root.discovery-rows.length > 0: VerticalLayout { spacing: 16px;
+                Text { text: "À découvrir"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                HorizontalLayout { spacing: 18px;
+                    for index in root.card-indices: MusicCard { track: root.discovery-rows[index]; visible: root.discovery-rows.length > index; busy: root.busy; selected: root.selected-id == self.track.id;
+                        play => { root.play-track(root.discovery-rows[index]); } request-artwork(row) => { root.request-artwork(row); }
+                    }
+                }
+            }
+        }
+    }
+    if root.page == 2 || root.page == 3: VerticalLayout { padding: 28px; spacing: 16px;
+        Text { text: root.page == 2 ? "Titres favoris" : "Écoutés récemment"; font-size: 32px; font-weight: 700; color: Theme.text; }
+        Text { text: (root.page == 2 ? root.saved-rows.length : root.recent-rows.length) + " titres · Conservés sur ce PC"; color: Theme.muted; font-size: 13px; }
+        if (root.page == 2 ? root.saved-rows.length : root.recent-rows.length) == 0: Text { text: root.page == 2 ? "Ajoutez un titre avec le cœur pour le retrouver ici." : "Écoutez un morceau pour commencer votre historique."; color: Theme.muted; wrap: word-wrap; }
+        TrackList { rows: root.page == 2 ? root.saved-rows : root.recent-rows; selected-id: root.selected-id; busy: root.busy;
+            play(row) => { root.play-track(row); } save(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); } request-artwork(row) => { root.request-artwork(row); }
+        }
+    }
+    if root.page == 1: VerticalLayout { padding: 28px; spacing: 20px;
+        HorizontalLayout { spacing: 8px;
+            ActionButton { text: "Tout"; round: true; filled: !root.songs-only; clicked => { root.songs-only = false; } }
+            ActionButton { text: "Titres"; round: true; filled: root.songs-only; clicked => { root.songs-only = true; } }
             Rectangle { horizontal-stretch: 1; }
         }
-        if root.page == 0: ScrollView {
-            VerticalLayout {
-                spacing: 24px;
-                Text { text: "Make room for music."; color: Theme.text; font-size: 32px; font-weight: 700; }
-                Text { text: "Search YouTube Music, build your queue, and keep your favorites close."; color: Theme.muted; font-size: 14px; wrap: word-wrap; }
-                if root.saved-rows.length > 0: ActionButton { text: "Your saved songs"; icon: @image-url("../assets/ui/heart.svg"); filled: true; round: true; clicked => { root.show-saved(); } }
-                if root.results.length > 0: VerticalLayout {
-                    spacing: 16px;
-                    Text { text: "From your last search"; color: Theme.text; font-size: 23px; font-weight: 700; }
-                    HorizontalLayout {
-                        spacing: 16px; alignment: start;
-                        for index in [0, 1, 2, 3]: TrackCard {
-                            track: root.results[index]; busy: root.busy; visible: root.results.length > index;
-                            play => { root.play-track(root.results[index]); }
-                        }
+        if root.searching: Text { text: "Recherche sur YouTube Music…"; color: Theme.muted; }
+        if root.search-error != "": Text { text: root.search-error; color: Theme.error; wrap: word-wrap; }
+        if root.results.length > 0 && !root.searching: VerticalLayout { spacing: 20px;
+            if !root.songs-only: HorizontalLayout { height: 270px; spacing: 24px;
+                VerticalLayout { min-width: 180px; max-width: 280px; spacing: 12px;
+                    Text { text: "Meilleur résultat"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                    MusicCard { track: root.results[0]; busy: root.busy; selected: root.selected-id == self.track.id;
+                        play => { root.play-track(root.results[0]); } request-artwork(row) => { root.request-artwork(row); }
                     }
                 }
-                Text { text: "Find your sound"; color: Theme.text; font-size: 23px; font-weight: 700; }
-                HorizontalLayout { spacing: 16px;
-                    GenreTile { title: "Jazz"; subtitle: "Standards & new discoveries"; tint: #503f38; clicked => { root.explore("jazz music"); } }
-                    GenreTile { title: "Electronic"; subtitle: "Beats after dark"; tint: #36334b; clicked => { root.explore("electronic music"); } }
-                    GenreTile { title: "Soul"; subtitle: "Voices worth staying for"; tint: #4e343d; clicked => { root.explore("soul music"); } }
+                VerticalLayout { horizontal-stretch: 1; spacing: 4px;
+                    Text { text: "Titres"; color: Theme.text; font-size: 21px; font-weight: 700; }
+                    for index in [0,1,2]: SongRow { track: root.results[index]; visible: root.results.length > index; actions: false; busy: root.busy;
+                        play => { root.play-track(root.results[index]); } request-artwork(row) => { root.request-artwork(row); }
+                    }
                 }
-                HorizontalLayout { spacing: 16px;
-                    GenreTile { title: "Indie"; subtitle: "Something different"; tint: #3d414e; clicked => { root.explore("indie music"); } }
-                    GenreTile { title: "Hip-hop"; subtitle: "Find your next rotation"; tint: #4b3e36; clicked => { root.explore("hip hop music"); } }
-                    GenreTile { title: "Classical"; subtitle: "A little perspective"; tint: #41414a; clicked => { root.explore("classical music"); } }
-                }
-                Rectangle { height: 24px; }
+            }
+            Text { text: root.songs-only ? "Titres" : "Plus de titres"; color: Theme.text; font-size: 21px; font-weight: 700; }
+            TrackList { rows: root.results; selected-id: root.selected-id; busy: root.busy;
+                play(row) => { root.play-track(row); } save(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); } request-artwork(row) => { root.request-artwork(row); }
             }
         }
-        if root.page == 2: VerticalLayout {
-            spacing: 16px;
-            Text { text: "Saved songs"; font-size: 40px; font-weight: 700; color: Theme.text; }
-            Text { text: root.saved-rows.length + " songs · Stored on this PC"; color: Theme.muted; font-size: 13px; }
-            if root.saved-rows.length == 0: Text { text: "Save a song with the heart button. It will be here when you return."; color: Theme.muted; wrap: word-wrap; }
-            TrackList { rows: root.saved-rows; selected-id: root.selected-id; busy: root.busy; play(row) => { root.play-track(row); } save(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); } }
-        }
-        if root.page == 1: VerticalLayout {
-            spacing: 20px;
-            if root.searching: VerticalLayout {
-                spacing: 12px;
-                Text { text: "Searching YouTube Music…"; color: Theme.muted; }
-                for skeleton in [0, 1, 2, 3]: Rectangle { height: 52px; background: #1b1b1b; border-radius: 4px; }
-            }
-            if root.search-error != "": Text { text: root.search-error; color: Theme.error; wrap: word-wrap; }
-            if root.results.length > 0 && !root.searching: VerticalLayout {
-                spacing: 24px;
-                if !root.songs-only: HorizontalLayout {
-                    height: 266px; spacing: 24px;
-                    VerticalLayout {
-                        min-width: 180px; max-width: 320px; spacing: 12px;
-                        Text { text: "Top result"; color: Theme.text; font-size: 23px; font-weight: 700; }
-                        Rectangle {
-                            background: #1c1c1c; border-radius: 8px;
-                            Cover { x: 18px; y: 18px; width: 88px; height: 88px; artwork: root.results[0].artwork; }
-                            Text { x: 18px; y: 124px; width: parent.width - 36px; text: root.results[0].title; color: Theme.text; font-size: 24px; font-weight: 700; overflow: elide; }
-                            Text { x: 18px; y: 161px; width: parent.width - 72px; text: root.results[0].artist; color: Theme.muted; font-size: 13px; overflow: elide; }
-                            ActionButton { x: parent.width - 58px; y: parent.height - 56px; width: 40px; height: 40px; filled: true; round: true; icon: @image-url("../assets/ui/play.svg"); label: "Play top result"; enabled: !root.busy; clicked => { root.play-track(root.results[0]); } }
-                        }
-                    }
-                    VerticalLayout {
-                        horizontal-stretch: 1; spacing: 4px;
-                        Text { text: "Songs"; color: Theme.text; font-size: 23px; font-weight: 700; }
-                        for index in [0, 1, 2]: SongRow {
-                            track: root.results[index]; visible: root.results.length > index;
-                            selected: root.selected-id == root.results[index].id; actions: false; busy: root.busy;
-                            play => { root.play-track(root.results[index]); }
-                        }
-                    }
-                }
-                Text { text: root.songs-only ? "Songs" : "More to listen to"; color: Theme.text; font-size: 23px; font-weight: 700; }
-                TrackList {
-                    rows: root.results; selected-id: root.selected-id; busy: root.busy;
-                    play(row) => { root.play-track(row); } save(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); }
-                }
-            }
-            if !root.searching && root.results.length == 0 && root.search-error == "": VerticalLayout {
-                Text { text: root.searched ? "No results found" : "Find a song you love."; color: Theme.text; font-size: 30px; font-weight: 700; }
-                Text { text: root.searched ? "Try a different song title or artist." : "Start with the search bar above."; color: Theme.muted; }
-                Rectangle { vertical-stretch: 1; }
-            }
+        if !root.searching && root.results.length == 0 && root.search-error == "": VerticalLayout {
+            Text { text: root.searched ? "Aucun résultat" : "Trouvez votre prochaine écoute."; color: Theme.text; font-size: 28px; font-weight: 700; }
+            Text { text: root.searched ? "Essayez un autre titre ou un autre artiste." : "Saisissez un titre ou un artiste dans la recherche."; color: Theme.muted; }
+            Rectangle { vertical-stretch: 1; }
         }
     }
 }

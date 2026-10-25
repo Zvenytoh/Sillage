@@ -6,7 +6,7 @@ mod source;
 use rodio::{DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use std::fmt;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -36,6 +36,7 @@ pub enum PlaybackEventKind {
         local: bool,
     },
     VolumeChanged(f32),
+    TrackMetadata(Track),
     Ended,
     Position(Duration),
     Failed(&'static str),
@@ -51,9 +52,9 @@ pub enum PlaybackError {
 impl fmt::Display for PlaybackError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::InvalidVolume => "Volume must be finite and between zero and one.",
-            Self::Busy => "The player is busy. Try again.",
-            Self::Unavailable => "The audio worker is unavailable. Restart Sillage.",
+            Self::InvalidVolume => "Le volume doit être un nombre compris entre zéro et un.",
+            Self::Busy => "Le lecteur est occupé. Réessayez.",
+            Self::Unavailable => "Le moteur audio est indisponible. Relancez Sillage.",
         })
     }
 }
@@ -66,6 +67,8 @@ pub struct Playback {
     worker: Option<JoinHandle<()>>,
     callbacks: Arc<CallbackState>,
     active: Mutex<Cancellation>,
+    volume: Arc<AtomicU32>,
+    volume_pending: Arc<AtomicBool>,
 }
 
 struct Job {
@@ -89,14 +92,24 @@ impl Playback {
         let stopping = shutdown.clone();
         let callbacks = Arc::new(CallbackState::default());
         let worker_callbacks = callbacks.clone();
+        let volume = Arc::new(AtomicU32::new(0.25_f32.to_bits()));
+        let volume_pending = Arc::new(AtomicBool::new(false));
+        let worker_volume = volume.clone();
+        let worker_volume_pending = volume_pending.clone();
         let worker = std::thread::Builder::new()
             .name("sillage-audio".into())
             .spawn(move || {
                 let mut audio = Worker::new(events, worker_callbacks);
                 audio.emit(PlaybackEventKind::Ready);
-                while let Ok(command) = receiver.recv() {
+                while let Ok(mut command) = receiver.recv() {
                     if stopping.load(Ordering::Acquire) {
                         break;
+                    }
+                    if matches!(command.command, PlaybackCommand::SetVolume(_)) {
+                        worker_volume_pending.store(false, Ordering::Release);
+                        command.command = PlaybackCommand::SetVolume(f32::from_bits(
+                            worker_volume.load(Ordering::Acquire),
+                        ));
                     }
                     audio.apply(command.command, command.cancel);
                 }
@@ -108,6 +121,8 @@ impl Playback {
             worker: Some(worker),
             callbacks,
             active: Mutex::new(Cancellation::default()),
+            volume,
+            volume_pending,
         })
     }
 
@@ -125,13 +140,21 @@ impl Playback {
             &command,
             PlaybackCommand::OpenLocal(_) | PlaybackCommand::OpenRemote(_) | PlaybackCommand::Stop
         );
+        let is_volume = matches!(&command, PlaybackCommand::SetVolume(_));
+        if let PlaybackCommand::SetVolume(value) = &command {
+            self.volume.store(value.to_bits(), Ordering::Release);
+            if self.volume_pending.swap(true, Ordering::AcqRel) {
+                return Ok(());
+            }
+        }
         let mut active = self.active.lock().map_err(|_| PlaybackError::Unavailable)?;
         let cancel = if affects_source {
             Cancellation::default()
         } else {
             active.clone()
         };
-        self.sender
+        let submitted = self
+            .sender
             .as_ref()
             .ok_or(PlaybackError::Unavailable)?
             .try_send(Job {
@@ -141,7 +164,13 @@ impl Playback {
             .map_err(|error| match error {
                 mpsc::TrySendError::Full(_) => PlaybackError::Busy,
                 mpsc::TrySendError::Disconnected(_) => PlaybackError::Unavailable,
-            })?;
+            });
+        if let Err(error) = submitted {
+            if is_volume {
+                self.volume_pending.store(false, Ordering::Release);
+            }
+            return Err(error);
+        }
         if affects_source {
             active.cancel();
             *active = cancel;
@@ -157,7 +186,9 @@ impl CallbackEvents {
             (&self.0.ended, PlaybackEventKind::Ended),
             (
                 &self.0.failed,
-                PlaybackEventKind::Failed("Audio processing failed. Stop playback and try again."),
+                PlaybackEventKind::Failed(
+                    "Le traitement audio a échoué. Arrêtez la lecture et réessayez.",
+                ),
             ),
         ] {
             let encoded = slot.swap(0, Ordering::AcqRel);
@@ -255,12 +286,19 @@ impl Worker {
         &self,
         cancel: &Cancellation,
     ) -> Result<(source::Prepared, Option<Duration>), &'static str> {
-        let track = self.remote.as_ref().ok_or("Choose a track first.")?;
+        let track = self.remote.as_ref().ok_or("Choisissez d’abord un titre.")?;
         let stream = self
             .client
             .resolve(&track.id, cancel)
-            .map_err(|_| "This track could not be opened. Try another result or retry Play.")?;
+            .map_err(|_| "Ce titre ne peut pas être ouvert. Essayez un autre résultat ou relancez la lecture.")?;
         let duration = stream.duration();
+        if track.thumbnail.is_none()
+            && let Some(thumbnail) = stream.thumbnail()
+        {
+            let mut metadata = track.clone();
+            metadata.thumbnail = Some(thumbnail.to_owned());
+            self.emit(PlaybackEventKind::TrackMetadata(metadata));
+        }
         Ok((
             source::prepare_online(&self.client, stream, cancel.clone())?,
             duration,
@@ -417,7 +455,7 @@ impl Worker {
                             let _ = events.try_send(PlaybackEvent {
                                 generation: id,
                                 kind: PlaybackEventKind::Failed(
-                                    "Audio processing failed. Stop playback and try again.",
+                                    "Le traitement audio a échoué. Arrêtez la lecture et réessayez.",
                                 ),
                             });
                         })
@@ -452,7 +490,7 @@ impl Worker {
                         }
                     }
                     Err(_) => self.emit(PlaybackEventKind::Failed(
-                        "No usable default audio output. Check your device and press Play again.",
+                        "Aucune sortie audio utilisable. Vérifiez votre périphérique et relancez la lecture.",
                     )),
                 }
             }
@@ -483,7 +521,7 @@ impl Worker {
                     && player.try_seek(position).is_err()
                 {
                     self.emit(PlaybackEventKind::Failed(
-                        "Seeking is unavailable for this file.",
+                        "Le déplacement dans ce morceau est indisponible.",
                     ));
                 }
             }
@@ -537,7 +575,7 @@ impl Iterator for EndNotification {
                     let _ = self.events.try_send(PlaybackEvent {
                         generation: self.id,
                         kind: PlaybackEventKind::Failed(
-                            "Audio processing failed. Stop playback and try another track.",
+                            "Le traitement audio a échoué. Arrêtez la lecture et essayez un autre titre.",
                         ),
                     });
                     return sample;

@@ -2,6 +2,31 @@
 
 Date : 2026-10-25.
 
+## Reprise active — accueil français violet
+
+- Choix A Équilibré + violet `#AD91FF`, implémentation approuvée « nickel go fonce ».
+  Branche `codex/french-home-implementation`. Les mentions de brouillon plus bas
+  décrivent les étapes antérieures.
+- Source : catalogue accueil/recherche, vraies tendances France et découverte,
+  historique PCM persistant/migration v1→v2, cache commun de pochettes, interface
+  française sans ouverture locale, refonte A/violet et volume coalescé.
+- Sonde publique Rust réussie : 20 tendances, 21 nouveautés, 41 références
+  d'images valides ; aucun compte, fenêtre ou son. Preuves et limites dans
+  `docs/qa/french-home-native.md` et le JSON de build associé.
+- Dernière consigne : l'utilisateur joue sur son PC. Continuer en arrière-plan,
+  aucune fenêtre ni contrôle UI pendant cette exécution. Compilation limitée
+  à deux jobs, priorité BelowNormal. Tests unitaires/fonctionnels non exécutés.
+- Vérifications finales : fmt --check, Clippy toutes cibles sans avertissement
+  Rust/Slint, build Release --bins réussis. Nouvelle préversion distincte
+  `dist/Sillage-fr-violet-preview.exe`, 18 046 976 octets ; raccourci Bureau
+  actualisé et relu, ancienne version préservée. Aucune ouverture de la nouvelle
+  révision. Empreinte dans le JSON de QA.
+- Prochaine action après livraison : inspection native de la nouvelle préversion
+  et du volume quand l'utilisateur est disponible, puis corrections visuelles
+  nécessaires. La roadmap reste ouverte sur ces vérifications.
+
+## Historique des étapes
+
 - Nom choisi par l'utilisateur : **Sillage**.
 - Dépôt : `https://github.com/Zvenytoh/Sillage` ; projet séparé d'UltraMusic.
 - Demande actuelle : suivre précisément la roadmap, lire les fichiers pertinents et appliquer Caveman, i-have-adhd, Graphify, Using-superpowers et Ponytail. Logo et README publiés sur main au commit `137ea86`.

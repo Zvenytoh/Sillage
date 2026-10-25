@@ -12,6 +12,21 @@
 
 ## Global Constraints
 
+### Avancement après approbation
+
+L'utilisateur a approuvé l'exécution (« nickel go fonce »). Implémentation des
+tâches 1–4 préparée en source ; tâche 5 corrigée statiquement, contrôle natif
+encore ouvert. Tâche 6 : livraison de préversion, vérification visuelle différée
+à la demande de poursuivre pendant sa partie. Les cases de validation globale
+ci-dessous restent ouvertes tant que les preuves natives manquent.
+Voir `docs/qa/french-home-native.md` pour les preuves et écarts précis.
+
+Le modèle de page est volontairement réduit à `trending` / `discovery`, seules
+sections actuellement consommées. `Catalog::home(force)` cible FR ; une seule
+opération réseau remplaçable, modèles reçus conservés. Priorités d'images Current
+et Visible ; pas de Background inutilisée. serde déjà transitive devient une
+dépendance directe pour les snapshots typés, sans nouveau paquet verrouillé.
+
 - Windows 11 x64, Rust + Slint ; aucun WebView ou frontend JavaScript dans le produit. Le prototype HTML est une référence de composition uniquement.
 - Direction choisie : A Équilibré ; violet `#AD91FF`, texte sur accent `#19112A`, lavis `#342D45`, fonds `#090A0D` / `#14151B`.
 - Tous les textes applicatifs et accessibles en français ; titres/artistes dans leur langue d'origine ; README conservé en anglais.

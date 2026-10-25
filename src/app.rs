@@ -1,5 +1,4 @@
-use crate::platform::file_dialog;
-use crate::search::Search;
+use crate::catalog::Catalog;
 use sillage::model::PlaybackState;
 use sillage::playback::{Playback, PlaybackCommand, PlaybackEvent, PlaybackEventKind};
 use slint::ComponentHandle;
@@ -25,7 +24,7 @@ pub(crate) fn command(ui: &AppWindow, playback: &Playback, command: PlaybackComm
         return false;
     } else if loading {
         ui.set_busy(true);
-        ui.set_status("Preparing audio…".into());
+        ui.set_status("Préparation du morceau…".into());
     }
     true
 }
@@ -41,6 +40,9 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64, ended: &Atom
             ui.set_status(state.label().into());
             ui.set_playing(state == PlaybackState::Playing);
             ui.set_busy(state == PlaybackState::Loading);
+            if matches!(state, PlaybackState::Paused | PlaybackState::Stopped) {
+                ui.invoke_flush_state();
+            }
             if matches!(state, PlaybackState::Stopped | PlaybackState::Empty) {
                 ui.set_position_seconds(0.0);
                 ui.set_elapsed_label("0:00".into());
@@ -53,7 +55,7 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64, ended: &Atom
         } => {
             if local {
                 ui.set_selected_id("".into());
-                ui.set_track_artist("Local file".into());
+                ui.set_track_artist("Fichier local".into());
                 ui.set_track_artwork(slint::Image::default());
                 ui.invoke_clear_queue();
             }
@@ -76,7 +78,10 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64, ended: &Atom
             ui.set_loaded(true);
             ui.set_error_message("".into());
         }
-        PlaybackEventKind::VolumeChanged(value) => ui.set_volume(value * 100.0),
+        PlaybackEventKind::VolumeChanged(_) => {}
+        PlaybackEventKind::TrackMetadata(track) => {
+            ui.invoke_track_metadata(crate::view::row(&track))
+        }
         PlaybackEventKind::Ended => {
             if ended.swap(event.generation + 1, Ordering::AcqRel) == event.generation + 1 {
                 return;
@@ -86,6 +91,9 @@ fn apply(ui: &AppWindow, event: PlaybackEvent, current: &AtomicU64, ended: &Atom
             ui.invoke_ended();
         }
         PlaybackEventKind::Position(position) => {
+            if !ui.get_busy() {
+                ui.invoke_audio_position(position.as_millis() as f32);
+            }
             if !ui.get_busy() && ui.window().is_visible() && !ui.window().is_minimized() {
                 ui.set_position_seconds(position.as_secs_f32());
                 ui.set_elapsed_label(
@@ -104,8 +112,28 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let ui = AppWindow::new()?;
     let (events, receiver) = mpsc::sync_channel(32);
     let playback = Arc::new(Playback::spawn(events)?);
-    let search = Arc::new(Search::new(ui.as_weak())?);
-    let library = crate::session::wire(&ui, playback.clone())?;
+    let search = Arc::new(Catalog::new(ui.as_weak())?);
+    let artwork = Arc::new(crate::artwork::Artwork::new(ui.as_weak())?);
+    let session = crate::session::wire(&ui, playback.clone(), artwork.clone())?;
+    for force in [false, true] {
+        let weak = ui.as_weak();
+        let catalog = search.clone();
+        let load = move || {
+            if let Some(ui) = weak.upgrade() {
+                ui.set_home_loading(true);
+                ui.set_home_error("".into());
+                if let Err(message) = catalog.home(force) {
+                    ui.set_home_loading(false);
+                    ui.set_home_error(message.into());
+                }
+            }
+        };
+        if force {
+            ui.on_refresh_home(load);
+        } else {
+            ui.on_load_home(load);
+        }
+    }
     let debounce = Rc::new(slint::Timer::default());
     {
         let weak = ui.as_weak();
@@ -113,6 +141,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         let debounce = debounce.clone();
         ui.on_query_edited(move |query| {
             search.cancel();
+            // Switching to search cancels an in-flight home request without hiding cached content.
             debounce.stop();
             let Some(ui) = weak.upgrade() else {
                 return;
@@ -121,6 +150,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_searched(false);
             ui.set_searching(false);
             ui.set_search_error("".into());
+            ui.set_home_loading(false);
             if query.trim().is_empty() {
                 return;
             }
@@ -149,22 +179,6 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     let about: Rc<RefCell<Option<AboutWindow>>> = Rc::new(RefCell::new(None));
-    {
-        let weak = ui.as_weak();
-        let playback = playback.clone();
-        ui.on_open_file(move || {
-            let Some(ui) = weak.upgrade() else {
-                return;
-            };
-            match file_dialog::open_audio() {
-                Ok(Some(path)) => {
-                    command(&ui, &playback, PlaybackCommand::OpenLocal(path));
-                }
-                Ok(None) => {}
-                Err(message) => ui.set_error_message(message.into()),
-            }
-        });
-    }
     {
         let weak = ui.as_weak();
         let playback = playback.clone();
@@ -206,7 +220,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(window) => *about.borrow_mut() = Some(window),
                     Err(_) => {
                         if let Some(ui) = weak.upgrade() {
-                            ui.set_error_message("The About window could not be opened.".into());
+                            ui.set_error_message(
+                                "La fenêtre À propos ne peut pas être ouverte.".into(),
+                            );
                         }
                         return;
                     }
@@ -257,22 +273,25 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             slint::CloseRequestResponse::HideWindow
         });
     }
+    ui.invoke_load_home();
     let result = ui.run();
     let _ = start.send(());
+    session.flush();
     drop(ui);
     drop(about);
     drop(playback);
     drop(debounce);
     drop(search);
-    drop(library);
+    drop(session);
+    drop(artwork);
     let _ = bridge.join();
     result.map_err(Into::into)
 }
 
-fn submit_search(ui: &AppWindow, search: &Search) {
+fn submit_search(ui: &AppWindow, search: &Catalog) {
     ui.set_results(slint::ModelRc::default());
     ui.set_searched(false);
-    match search.submit(ui.get_query().to_string()) {
+    match search.search(ui.get_query().to_string()) {
         Ok(()) => {
             ui.set_searching(true);
             ui.set_search_error("".into());

@@ -24,6 +24,57 @@ fn text(value: &Value) -> String {
     text.chars().take(512).collect()
 }
 
+pub fn chart_playlist(response: &Value) -> Option<String> {
+    fn walk(node: &Value, depth: usize) -> Option<String> {
+        if depth > 64 {
+            return None;
+        }
+        if let Some(item) = node.get("musicTwoRowItemRenderer") {
+            let title = text(&item["title"]).to_lowercase();
+            if title.contains("tendance") && title.contains("france") {
+                return item
+                    .pointer("/navigationEndpoint/browseEndpoint/browseId")
+                    .and_then(Value::as_str)
+                    .filter(|id| {
+                        id.starts_with("VL")
+                            && id.len() <= 160
+                            && id
+                                .bytes()
+                                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+                    })
+                    .map(str::to_owned);
+            }
+        }
+        match node {
+            Value::Array(items) => items.iter().find_map(|item| walk(item, depth + 1)),
+            Value::Object(items) => items.values().find_map(|item| walk(item, depth + 1)),
+            _ => None,
+        }
+    }
+    walk(response, 0)
+}
+
+pub fn section(response: &Value, title: &str) -> Vec<Track> {
+    fn find<'a>(node: &'a Value, title: &str, depth: usize) -> Option<&'a Value> {
+        if depth > 64 {
+            return None;
+        }
+        if let Some(shelf) = node.get("musicCarouselShelfRenderer")
+            && text(&shelf["header"]["musicCarouselShelfBasicHeaderRenderer"]["title"]) == title
+        {
+            return Some(shelf);
+        }
+        match node {
+            Value::Array(items) => items.iter().find_map(|item| find(item, title, depth + 1)),
+            Value::Object(items) => items.values().find_map(|item| find(item, title, depth + 1)),
+            _ => None,
+        }
+    }
+    find(response, title, 0)
+        .and_then(|shelf| search(&serde_json::json!({"contents":shelf})).ok())
+        .unwrap_or_default()
+}
+
 fn duration_ms(node: &Value) -> Option<u64> {
     let raw = text(&node["fixedColumns"][0]["musicResponsiveListItemFixedColumnRenderer"]["text"]);
     let mut seconds = 0_u64;
@@ -51,7 +102,12 @@ fn track(node: &Value) -> Option<Track> {
         .find(|title| !title.trim().is_empty())?;
     let id = ["/playlistItemData/videoId", "/videoId", "/navigationEndpoint/watchEndpoint/videoId", "/flexColumns/0/musicResponsiveListItemFlexColumnRenderer/text/runs/0/navigationEndpoint/watchEndpoint/videoId", "/overlay/musicItemThumbnailOverlayRenderer/content/musicPlayButtonRenderer/playNavigationEndpoint/watchEndpoint/videoId"]
         .iter().find_map(|path| node.pointer(path).and_then(Value::as_str).filter(|id| valid_id(id)))?;
-    let artists = column(1)["runs"]
+    let artist_text = if column(1).is_object() {
+        column(1)
+    } else {
+        &node["subtitle"]
+    };
+    let artists = artist_text["runs"]
         .as_array()
         .into_iter()
         .flatten()
@@ -80,9 +136,9 @@ fn track(node: &Value) -> Option<Track> {
         .filter(|thumbnail| {
             thumbnail["url"]
                 .as_str()
-                .is_some_and(|url| url.len() <= 4096)
+                .is_some_and(|url| url.len() <= 4096 && super::valid_artwork_url(url))
         })
-        .min_by_key(|thumbnail| thumbnail["width"].as_u64().unwrap_or(0).abs_diff(320))
+        .min_by_key(|thumbnail| thumbnail["width"].as_u64().unwrap_or(0).abs_diff(512))
         .and_then(|thumbnail| thumbnail["url"].as_str())
         .map(str::to_owned),
     })
@@ -111,6 +167,7 @@ pub fn search(response: &Value) -> Result<Vec<Track>, ServiceError> {
                     ) {
                         if let Some(track) = track(value)
                             && tracks.len() < 100
+                            && track.valid()
                             && seen.insert(track.id.clone())
                         {
                             tracks.push(track);

@@ -2,14 +2,14 @@
 name: Sillage desktop
 description: Familiar music browsing with a persistent playback bar
 colors:
-  canvas: "#000000"
-  sidebar: "#121212"
-  surface: "#121212"
-  elevated: "#242424"
-  hover: "#303030"
-  text: "#F5F5F5"
-  muted: "#B3B3B3"
-  accent: "#FFFFFF"
+  canvas: "#090A0D"
+  sidebar: "#0B0C10"
+  surface: "#111217"
+  elevated: "#242630"
+  hover: "#2D2B38"
+  text: "#F4F4F7"
+  muted: "#ADB0BD"
+  accent: "#AD91FF"
   line: "#303030"
   error: "#FFB4AB"
 typography:
@@ -40,17 +40,35 @@ spacing:
   large: 24px
 components:
   button-primary:
-    backgroundColor: "{colors.text}"
-    textColor: "{colors.canvas}"
+    backgroundColor: "{colors.accent}"
+    textColor: "#19112A"
     height: 40px
   search-field:
     backgroundColor: "{colors.elevated}"
     textColor: "{colors.text}"
-    height: 48px
+    height: 42px
     rounded: "{rounded.search}"
 ---
 
 # Sillage desktop design
+
+## Approved French home revision — 2026-10-25
+
+The user selected A Équilibré with violet after comparing mockups, then approved
+implementation. The source now follows that direction: French navigation,
+recent listening cards, compact France trends, new music videos, a large
+now-playing cover and next tracks, and a fixed transport. The original green
+application icon remains separate from the operational violet accent.
+
+Current source dimensions supersede the earlier rebuild notes below: initial
+1360×900, minimum 1000×700, sidebar 216/240 px, right pane 300 px reserved from
+1200 px, transport 88 px. Home uses four cards, six when its content exceeds
+1100 px. Artwork keeps a square container, with wide video artwork contained.
+Violet #AD91FF uses ink #19112A; wash #342D45 is restrained. Volume fill and focus
+follow the same accent. The native rendering has not yet been inspected.
+
+The older sections describe the preceding reconstruction, not a current visual
+approval. Native QA is deferred while the user is gaming.
 
 ## Overview
 

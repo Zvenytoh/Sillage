@@ -20,7 +20,9 @@
 > connected in source: find a track, press Play, and stream it without a local file.
 > The development build compiles; this integrated flow still needs runtime validation.
 > Earlier standalone public retrieval and silent AAC decoding checks succeeded.
-> Browsing, accounts and a packaged public release remain ahead; performance figures
+> The French home includes France trends, new music videos, persistent listening
+> history and shared artwork caching. Native visual verification of this revision
+> is pending. Accounts and a packaged public release remain ahead; performance figures
 > are engineering targets.
 
 ## The idea
@@ -57,7 +59,8 @@ They will be described as supported only after the actual service flow works.
 The desktop follows the familiar composition of Spotify and YouTube Music:
 black and charcoal surfaces, white type, global search, a useful library on the
 left and a now-playing or queue pane on the right. The rebuilt transport spans
-the bottom. Selection, focus and volume are monochrome; color comes from artwork.
+the bottom. The French home pairs recent listening, France trends and discovery
+with a restrained violet accent; real artwork carries the rest of the color.
 The separate application icon keeps its existing identity.
 
 Keyboard access, visible focus, high contrast, reduced motion, and useful error states

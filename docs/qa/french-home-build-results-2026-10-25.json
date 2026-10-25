@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-25",
+  "feature": "French home, persistent listening history and shared artwork",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exitCode": 0
+    },
+    {
+      "exitCode": 0,
+      "command": "cargo clippy --locked --all-targets --target-dir .tools/app-target -- -D warnings",
+      "slintWarnings": 0
+    },
+    {
+      "command": "cargo build --locked --release --bins --target-dir .tools/app-target",
+      "exitCode": 0
+    }
+  ],
+  "artifact": {
+    "path": "dist/Sillage-fr-violet-preview.exe",
+    "sha256": "41DF2EA4F7645F946DE18314ABED90C977505ABE683AB1524AFB42126DE06402",
+    "bytes": 18046976
+  },
+  "shortcut": {
+    "targetVerified": true,
+    "name": "Sillage.lnk"
+  },
+  "publicMetadataProbe": {
+    "result": {
+      "account_used": false,
+      "audio_played": false,
+      "country": "FR",
+      "discovery": 21,
+      "invalid_metadata": [],
+      "source": "YouTube Music · Les 20 clips tendance France",
+      "trending": 20,
+      "valid": true,
+      "window_created": false,
+      "with_artwork": 41
+    },
+    "exitCode": 0,
+    "command": "cargo run --locked --release --example catalog-probe --target-dir .tools/app-target -- --metadata-only"
+  },
+  "newNativeRevisionLaunched": false,
+  "newRenderedVisualQA": false,
+  "audioPlayed": false,
+  "unitTestsExecuted": false,
+  "functionalTestsExecuted": false,
+  "performanceMeasured": false,
+  "restrictions": "No desktop or browser control while user is gaming; native QA deferred",
+  "buildScheduling": {
+    "priority": "BelowNormal",
+    "jobs": 2
+  }
+}

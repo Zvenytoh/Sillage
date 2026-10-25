@@ -9,6 +9,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 pub use stream::StreamInput;
+pub fn valid_artwork_url(raw: &str) -> bool {
+    transport::artwork_url(raw).is_ok()
+}
 
 #[derive(Clone)]
 pub struct Cancellation(Arc<AtomicBool>);
@@ -45,18 +48,18 @@ pub enum ServiceError {
 impl fmt::Display for ServiceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::Cancelled => "Request cancelled.",
+            Self::Cancelled => "Requête annulée.",
             Self::Network => {
-                "YouTube Music could not be reached. Check your connection and try again."
+                "YouTube Music est inaccessible. Vérifiez votre connexion et réessayez."
             }
-            Self::RateLimited => "YouTube Music is limiting requests. Wait before trying again.",
+            Self::RateLimited => "YouTube Music limite les requêtes. Patientez avant de réessayer.",
             Self::Unavailable => {
-                "This track has no supported public audio stream. Try another result."
+                "Aucun flux public compatible pour ce titre. Essayez un autre résultat."
             }
             Self::InvalidResponse => {
-                "YouTube Music returned an unsupported response. Try again later."
+                "La réponse de YouTube Music est incompatible. Réessayez plus tard."
             }
-            Self::DestinationRejected => "The service returned an unsupported network destination.",
+            Self::DestinationRejected => "La destination réseau reçue ne peut pas être utilisée.",
         })
     }
 }
@@ -71,15 +74,73 @@ pub struct ResolvedStream {
     url: url::Url,
     length: u64,
     duration: Option<Duration>,
+    thumbnail: Option<String>,
 }
 
 impl ResolvedStream {
     pub fn duration(&self) -> Option<Duration> {
         self.duration
     }
+    pub fn thumbnail(&self) -> Option<&str> {
+        self.thumbnail.as_deref()
+    }
 }
 
 impl Client {
+    fn browse(&self, id: &str, cancel: &Cancellation) -> Result<Value, ServiceError> {
+        self.transport.json("https://music.youtube.com/youtubei/v1/browse?prettyPrint=false", &json!({
+            "context":{"client":{"clientName":"WEB_REMIX","clientVersion":"1.20260707.12.00","hl":"fr","gl":"FR"}},
+            "browseId":id
+        }),"67","1.20260707.12.00",None,cancel)
+    }
+
+    pub fn home(
+        &self,
+        country: &str,
+        cancel: &Cancellation,
+    ) -> Result<crate::model::HomePage, ServiceError> {
+        if country != "FR" {
+            return Err(ServiceError::InvalidResponse);
+        }
+        let mut page = crate::model::HomePage {
+            country: "FR".into(),
+            fetched_at_unix_ms: crate::model::now_ms(),
+            ..Default::default()
+        };
+        let charts = self
+            .browse("FEmusic_charts", cancel)
+            .and_then(|value| parse::chart_playlist(&value).ok_or(ServiceError::InvalidResponse))
+            .and_then(|id| self.browse(&id, cancel))
+            .and_then(|value| parse::search(&value));
+        match charts {
+            Err(ServiceError::RateLimited) => return Err(ServiceError::RateLimited),
+            Ok(tracks) if !tracks.is_empty() => {
+                page.trending = tracks.into_iter().take(20).collect();
+                page.source = "YouTube Music · Les 20 clips tendance France".into();
+            }
+            _ => {
+                page.warning = Some(
+                    "Les tendances sont indisponibles. Réessayez dans quelques instants.".into(),
+                )
+            }
+        }
+        cancel.check()?;
+        match self.browse("FEmusic_explore", cancel) {
+            Ok(explore) => {
+                page.discovery = parse::section(&explore, "Nouveaux clips musicaux")
+                    .into_iter()
+                    .take(24)
+                    .collect()
+            }
+            Err(ServiceError::RateLimited) => return Err(ServiceError::RateLimited),
+            Err(_) => {}
+        }
+        cancel.check()?;
+        if page.trending.is_empty() && page.discovery.is_empty() {
+            return Err(ServiceError::Network);
+        }
+        Ok(page)
+    }
     pub fn artwork(&self, url: &str, cancel: &Cancellation) -> Result<Vec<u8>, ServiceError> {
         self.transport.artwork(url, cancel)
     }
@@ -89,7 +150,7 @@ impl Client {
             return Err(ServiceError::InvalidResponse);
         }
         let response = self.transport.json("https://music.youtube.com/youtubei/v1/search?prettyPrint=false", &json!({
-            "context": {"client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260707.12.00", "hl": "en"}},
+            "context": {"client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260707.12.00", "hl": "fr", "gl": "FR"}},
             "query": query.trim()
         }), "67", "1.20260707.12.00", None, cancel)?;
         parse::search(&response)
@@ -100,7 +161,7 @@ impl Client {
             return Err(ServiceError::InvalidResponse);
         }
         let visitor = self.transport.json("https://www.youtube.com/youtubei/v1/visitor_id?prettyPrint=false", &json!({
-            "context": {"client": {"clientName": "WEB", "clientVersion": "2.20260707.00.00", "hl": "en"}}
+            "context": {"client": {"clientName": "WEB", "clientVersion": "2.20260707.00.00", "hl": "fr", "gl": "FR"}}
         }), "1", "2.20260707.00.00", None, cancel)?;
         let visitor = visitor
             .pointer("/responseContext/visitorData")
@@ -108,7 +169,7 @@ impl Client {
             .filter(|value| value.len() <= 4096)
             .ok_or(ServiceError::InvalidResponse)?;
         let response = self.transport.json("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", &json!({
-            "context": {"client": {"clientName": "VISIONOS", "clientVersion": "1.02", "deviceMake": "Apple", "deviceModel": "RealityDevice17,1", "osName": "visionOS", "osVersion": "26.5.23O471", "visitorData": visitor, "hl": "en"}},
+            "context": {"client": {"clientName": "VISIONOS", "clientVersion": "1.02", "deviceMake": "Apple", "deviceModel": "RealityDevice17,1", "osName": "visionOS", "osVersion": "26.5.23O471", "visitorData": visitor, "hl": "fr", "gl": "FR"}},
             "videoId": id, "contentCheckOk": true, "racyCheckOk": true
         }), "101", "1.02", Some(visitor), cancel)?;
         if response
@@ -147,6 +208,19 @@ impl Client {
             url,
             length,
             duration,
+            thumbnail: response
+                .pointer("/videoDetails/thumbnail/thumbnails")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter(|item| {
+                    item["url"]
+                        .as_str()
+                        .is_some_and(|url| url.len() <= 4096 && valid_artwork_url(url))
+                })
+                .min_by_key(|item| item["width"].as_u64().unwrap_or(0).abs_diff(512))
+                .and_then(|item| item["url"].as_str())
+                .map(str::to_owned),
         })
     }
 

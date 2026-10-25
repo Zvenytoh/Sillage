@@ -2,182 +2,183 @@ import { AboutSlint, Palette, ScrollView } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 import { ActionButton, SearchField, Cover } from "components.slint";
 import { PlayerControls } from "player.slint";
-import { MusicSearch } from "library.slint";
+import { MusicLibrary } from "library.slint";
 import { TrackList } from "tracks.slint";
 import { SearchRow } from "model.slint";
 export { SearchRow } from "model.slint";
 
 export component AboutWindow inherits Window {
-    title: "About Sillage"; width: 380px; height: 260px; background: Theme.surface;
+    title: "À propos de Sillage"; width: 400px; height: 260px; background: Theme.surface;
     VerticalLayout { padding: 24px; spacing: 12px;
         Text { text: "Sillage"; color: Theme.text; font-size: 24px; font-weight: 700; }
-        Text { text: "Native music player · Version 0.1.0 · MIT"; color: Theme.muted; }
+        Text { text: "Lecteur musical natif · Version 0.1.0 · MIT"; color: Theme.muted; }
         AboutSlint { }
     }
 }
 
 export component AppWindow inherits Window {
     title: "Sillage"; icon: @image-url("../assets/sillage.png");
-    preferred-width: 1440px; preferred-height: 900px; min-width: 1000px; min-height: 700px;
+    preferred-width: 1360px; preferred-height: 900px; min-width: 1000px; min-height: 700px;
     background: Theme.canvas; default-font-family: "Segoe UI"; default-font-size: 14px;
     init => { Palette.color-scheme = ColorScheme.dark; }
-    in property <string> track-title: "Nothing playing";
-    in property <string> track-artist: "Find something you love";
+    in property <string> track-title: "Choisissez un titre";
+    in property <string> track-artist: "Votre prochaine écoute commence ici";
     in property <string> selected-id;
     in property <image> track-artwork;
     in property <string> duration-label;
     in property <string> elapsed-label: "0:00";
     in property <float> duration-seconds;
     in property <float> position-seconds;
-    in property <string> status: "Ready";
+    in property <string> status: "Prêt";
     in-out property <string> query;
     in property <[SearchRow]> results;
     in property <[SearchRow]> saved-rows;
+    in property <[SearchRow]> recent-rows;
+    in property <[SearchRow]> trending-rows;
+    in property <[SearchRow]> discovery-rows;
     in property <[SearchRow]> queue-rows;
+    in property <[SearchRow]> up-next-rows;
     in property <bool> searching; in property <bool> searched;
+    in property <bool> home-loading;
+    in property <string> home-source;
+    in property <string> home-error;
     in property <string> search-error; in property <string> error-message;
     in property <bool> loaded; in property <bool> playing; in property <bool> busy;
     in property <bool> library-ready;
     in property <bool> saved-current;
     in property <bool> can-next; in property <bool> can-previous;
+    in property <bool> can-go-back; in property <bool> can-go-forward;
     in-out property <bool> repeat; in-out property <bool> shuffle;
     in-out property <float> volume: 25;
     in-out property <int> page;
-    in-out property <bool> details-open;
+    in-out property <bool> details-open: true;
     in-out property <bool> queue-open;
     in-out property <bool> library-collapsed;
-    private property <length> rail-width: root.library-collapsed ? 72px : root.width >= 1500px ? 280px : 240px;
-    private property <bool> panel-visible: root.details-open || root.queue-open;
-    private property <length> panel-reserve: root.panel-visible && root.width >= 1280px ? 312px : 0px;
-    callback open-file(); callback toggle-play(); callback stop(); callback volume-changed(float); callback show-about();
+    private property <bool> small-panel-open;
+    private property <length> rail-width: root.library-collapsed ? 72px : root.width >= 1600px ? 240px : 216px;
+    private property <bool> panel-visible: (root.details-open && root.width >= 1200px) || root.queue-open || root.small-panel-open;
+    private property <length> panel-reserve: root.panel-visible && root.width >= 1200px ? 300px : 0px;
+    callback toggle-play(); callback stop(); callback volume-changed(float); callback show-about();
     callback query-edited(string); callback search(); callback play-track(SearchRow);
     callback save-track(SearchRow); callback save-current(); callback enqueue(SearchRow);
     callback play-queued(SearchRow); callback clear-queue();
     callback next-track(); callback previous-track(); callback ended(); callback mute();
-    callback artwork-ready(SearchRow); callback queue-mode-changed();
+    callback artwork-ready(SearchRow); callback request-artwork(SearchRow); callback refresh-images();
+    callback track-metadata(SearchRow);
+    callback library-loaded(); callback audio-position(float); callback flush-state();
+    callback queue-mode-changed(); callback refresh-home(); callback load-home();
+    callback navigate(int); callback nav-back(); callback nav-forward();
 
     forward-focus: keyboard-scope;
     keyboard-scope := FocusScope {
-    width: parent.width; height: parent.height;
-    KeyBinding { keys: @keys(Control + K); activated => { root.page = 1; search-field.focus(); } }
-    KeyBinding { keys: @keys(Control + L); activated => { root.page = 1; search-field.focus(); } }
-
-    // Chrome is explicitly positioned so child text cannot stretch the window grid.
-    Rectangle {
-        x: 0; y: 0; width: parent.width; height: 64px;
-        Text { x: 24px; y: 0; height: 64px; text: "Sillage"; font-size: 22px; font-weight: 700; color: Theme.text; vertical-alignment: center; }
-        ActionButton { x: max(180px, (parent.width - 576px) / 2); y: 8px; width: 48px; height: 48px; round: true;
-            icon: @image-url("../assets/ui/home.svg"); label: "Home"; selected: root.page == 0; clicked => { root.page = 0; }
+        width: parent.width; height: parent.height;
+        KeyBinding { keys: @keys(Control + K); activated => { root.navigate(1); search-field.focus(); } }
+        KeyBinding { keys: @keys(Control + L); activated => { root.navigate(1); search-field.focus(); } }
+        Rectangle {
+            x: 0; y: 0; width: root.rail-width; height: root.height - 88px;
+            background: Theme.sidebar;
+            VerticalLayout {
+                padding: 14px; spacing: 6px;
+                HorizontalLayout {
+                    height: 72px; padding-left: 12px; spacing: 10px;
+                    Rectangle { width: 28px; Image { source: @image-url("../assets/ui/sillage.svg"); width: 28px; height: 28px; y: (parent.height - 28px)/2; colorize: Theme.accent; } }
+                    if !root.library-collapsed: Text { text: "Sillage"; color: Theme.text; font-size: 25px; font-weight: 700; vertical-alignment: center; }
+                }
+                ActionButton { text: root.library-collapsed ? "" : "Accueil"; label: "Accueil"; icon: @image-url("../assets/ui/home.svg"); selected: root.page == 0; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(0); root.load-home(); } }
+                ActionButton { text: root.library-collapsed ? "" : "Titres favoris"; label: "Titres favoris"; icon: @image-url("../assets/ui/heart.svg"); selected: root.page == 2; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(2); } }
+                ActionButton { text: root.library-collapsed ? "" : "Écoutes récentes"; label: "Écoutes récentes"; icon: @image-url("../assets/ui/history.svg"); selected: root.page == 3; quiet: true; horizontal-stretch: 1; clicked => { root.navigate(3); } }
+                Rectangle { height: 20px; }
+                HorizontalLayout {
+                    if !root.library-collapsed: Text { text: "Votre bibliothèque"; color: Theme.muted; font-size: 12px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+                    ActionButton { icon: @image-url("../assets/ui/library.svg"); label: "Réduire ou agrandir la bibliothèque"; quiet: true; clicked => { root.library-collapsed = !root.library-collapsed; } }
+                }
+                if !root.library-collapsed && root.saved-rows.length > 0: TrackList {
+                    rows: root.saved-rows; actions: false; selected-id: root.selected-id; busy: root.busy;
+                    play(row) => { root.navigate(2); root.play-track(row); }
+                    request-artwork(row) => { root.request-artwork(row); }
+                }
+                if !root.library-collapsed && root.saved-rows.length == 0: Text { text: "Vos titres favoris apparaîtront ici. Ajoutez un morceau avec le cœur."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
+                Rectangle { vertical-stretch: 1; }
+                if !root.library-collapsed: Text { text: "Votre musique, sur ce PC"; color: Theme.muted; font-size: 11px; }
+                ActionButton { text: root.library-collapsed ? "" : "À propos"; label: "À propos de Sillage"; icon: @image-url("../assets/ui/info.svg"); quiet: true; horizontal-stretch: 1; clicked => { root.show-about(); } }
+            }
         }
-        search-field := SearchField {
-            x: max(236px, (parent.width - 464px) / 2); y: 8px;
-            width: min(480px, parent.width - 420px); height: 48px; text <=> root.query;
-            edited(text) => { root.page = 1; root.query-edited(text); }
-            accepted => { root.page = 1; root.search(); }
-        }
-        ActionButton { x: parent.width - 64px; y: 12px; quiet: true; round: true; icon: @image-url("../assets/ui/info.svg"); label: "About Sillage"; clicked => { root.show-about(); } }
-    }
-    Rectangle {
-        x: 8px; y: 64px; width: root.rail-width; height: root.height - 168px;
-        background: Theme.sidebar; border-radius: 8px;
-        VerticalLayout {
-            padding: 12px; spacing: 12px;
+        Rectangle {
+            x: root.rail-width; y: 0; width: root.width - root.rail-width - root.panel-reserve; height: root.height - 88px;
+            background: @linear-gradient(180deg, Theme.wash 0%, Theme.surface 46%, Theme.surface 100%);
             HorizontalLayout {
-                spacing: 4px;
-                ActionButton { icon: @image-url("../assets/ui/library.svg"); label: "Collapse or expand library"; quiet: true; clicked => { root.library-collapsed = !root.library-collapsed; } }
-                if !root.library-collapsed: Text { text: "Your Library"; color: Theme.muted; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
-                if !root.library-collapsed: ActionButton { icon: @image-url("../assets/ui/plus.svg"); label: "Save current song"; quiet: true; enabled: root.loaded && root.library-ready && root.selected-id != ""; clicked => { root.save-current(); } }
+                x: 22px; y: 16px; width: parent.width - 44px; height: 42px; spacing: 8px;
+                ActionButton { icon: @image-url("../assets/ui/back.svg"); label: "Retour"; quiet: true; round: true; enabled: root.can-go-back; clicked => { root.nav-back(); } }
+                ActionButton { icon: @image-url("../assets/ui/forward.svg"); label: "Avancer"; quiet: true; round: true; enabled: root.can-go-forward; clicked => { root.nav-forward(); } }
+                search-field := SearchField { text <=> root.query; max-width: 480px; horizontal-stretch: 1; height: 42px;
+                    edited(text) => { root.navigate(1); root.query-edited(text); }
+                    accepted => { root.navigate(1); root.search(); }
+                }
+                Rectangle { horizontal-stretch: 1; }
             }
-            ActionButton {
-                text: root.library-collapsed ? "" : "Saved songs"; label: "Saved songs";
-                icon: @image-url("../assets/ui/heart.svg"); selected: root.page == 2; quiet: root.page != 2;
-                horizontal-stretch: 1; clicked => { root.page = 2; }
+            MusicLibrary {
+                x: 0; y: 76px; width: parent.width; height: parent.height - 76px;
+                page: root.page; results: root.results; saved-rows: root.saved-rows; recent-rows: root.recent-rows;
+                trending-rows: root.trending-rows; discovery-rows: root.discovery-rows;
+                home-loading: root.home-loading; home-error: root.home-error; home-source: root.home-source;
+                searching: root.searching; searched: root.searched; query: root.query; search-error: root.search-error; busy: root.busy; selected-id: root.selected-id;
+                play-track(row) => { root.play-track(row); } save-track(row) => { root.save-track(row); } enqueue(row) => { root.enqueue(row); }
+                request-artwork(row) => { root.request-artwork(row); } refresh-home => { root.refresh-home(); }
+                navigate(page) => { root.navigate(page); }
             }
-            if !root.library-collapsed: Text { text: root.saved-rows.length + " songs · On this PC"; color: Theme.muted; font-size: 12px; }
-            if !root.library-collapsed && root.saved-rows.length > 0: TrackList {
-                rows: root.saved-rows; actions: false; selected-id: root.selected-id; busy: root.busy;
-                play(row) => { root.page = 2; root.play-track(row); }
-            }
-            if !root.library-collapsed && root.saved-rows.length == 0: VerticalLayout {
-                padding: 12px; spacing: 12px;
-                Text { text: "Your favorites live here"; color: Theme.text; font-weight: 600; wrap: word-wrap; }
-                Text { text: "Save a song with the heart button. Your library stays on this computer."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
-                ActionButton { text: "Find music"; round: true; filled: true; clicked => { root.page = 1; search-field.focus(); } }
-            }
-            Rectangle { vertical-stretch: 1; }
-            ActionButton { text: root.library-collapsed ? "" : "Open local file"; label: "Open local file"; icon: @image-url("../assets/ui/folder.svg"); quiet: true; horizontal-stretch: 1; enabled: !root.busy; clicked => { root.open-file(); } }
         }
-    }
-    Rectangle {
-        x: root.rail-width + 16px; y: 64px;
-        width: root.width - root.rail-width - root.panel-reserve - 24px;
-        height: root.height - 168px;
-        background: Theme.surface; border-radius: 8px;
-        MusicSearch {
-            width: parent.width; height: parent.height;
-            page: root.page; results: root.results; saved-rows: root.saved-rows;
-            searching: root.searching; searched: root.searched; query: root.query;
-            search-error: root.search-error; busy: root.busy; selected-id: root.selected-id;
-            play-track(row) => { root.play-track(row); }
-            save-track(row) => { root.save-track(row); }
-            enqueue(row) => { root.enqueue(row); }
-            explore(query) => { root.query = query; root.page = 1; root.search(); }
-            show-saved => { root.page = 2; }
-        }
-    }
-    if root.panel-visible: Rectangle {
-        x: root.width - 312px; y: 64px; width: 304px; height: root.height - 168px;
-        background: Theme.surface; border-radius: 8px;
-        VerticalLayout {
-            padding: 16px; spacing: 16px;
-            HorizontalLayout {
-                Text { text: root.queue-open ? "Queue" : "Now playing"; color: Theme.text; font-weight: 700; vertical-alignment: center; horizontal-stretch: 1; }
-                ActionButton { icon: @image-url("../assets/ui/close.svg"); label: "Close side panel"; quiet: true; clicked => { root.queue-open = false; root.details-open = false; } }
-            }
-            if !root.queue-open: ScrollView {
-                VerticalLayout {
-                    spacing: 18px;
-                    Rectangle { height: 272px; Cover { artwork: root.track-artwork; width: parent.width; height: 272px; } }
-                    Text { text: root.track-title; color: Theme.text; font-size: 24px; font-weight: 700; wrap: word-wrap; }
-                    Text { text: root.track-artist; color: Theme.muted; font-size: 14px; wrap: word-wrap; }
-                    if root.loaded && root.selected-id != "": ActionButton { text: root.saved-current ? "Saved" : "Save to your library"; icon: @image-url("../assets/ui/heart.svg"); round: true; enabled: root.library-ready; selected: root.saved-current; clicked => { root.save-current(); } }
-                    Rectangle { height: 1px; background: Theme.line; }
-                    Text { text: "Playback"; color: Theme.text; font-weight: 700; }
-                    Text { text: root.status; color: Theme.muted; font-size: 13px; wrap: word-wrap; }
-                    if root.loaded: Text { text: root.selected-id == "" ? "Local file" : "YouTube Music · Public stream"; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
-                    Text { text: "Seeking is not available yet."; color: Theme.muted; font-size: 12px; }
-                    Rectangle { height: 16px; }
+        if root.panel-visible: Rectangle {
+            x: root.width - 300px; y: 0; width: 300px; height: root.height - 88px; background: Theme.sidebar;
+            VerticalLayout {
+                padding: 18px; spacing: 16px;
+                HorizontalLayout {
+                    Text { text: root.queue-open ? "File d'attente" : "En cours de lecture"; color: Theme.text; font-size: 13px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+                    ActionButton { icon: @image-url("../assets/ui/panel.svg"); label: "Masquer le panneau"; quiet: true; clicked => { root.queue-open = false; root.details-open = false; root.small-panel-open = false; } }
+                }
+                if !root.queue-open: ScrollView {
+                    VerticalLayout { spacing: 18px;
+                        Rectangle { height: 264px; Cover { artwork: root.track-artwork; width: parent.width; height: 264px; } }
+                        Text { text: root.track-title; color: Theme.text; font-size: 21px; font-weight: 700; wrap: word-wrap; }
+                        HorizontalLayout {
+                            Text { text: root.track-artist; color: Theme.muted; font-size: 13px; wrap: word-wrap; horizontal-stretch: 1; }
+                            ActionButton { icon: @image-url("../assets/ui/heart.svg"); label: root.saved-current ? "Retirer des favoris" : "Ajouter aux favoris"; active: root.saved-current; quiet: true; enabled: root.library-ready && root.selected-id != ""; clicked => { root.save-current(); } }
+                        }
+                        Text { text: root.status; color: Theme.muted; font-size: 12px; }
+                        HorizontalLayout {
+                            Text { text: "À suivre"; color: Theme.text; font-size: 14px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+                            ActionButton { text: "Voir la file"; quiet: true; clicked => { root.queue-open = true; } }
+                        }
+                        if root.up-next-rows.length == 0: Text { text: "Ajoutez des titres pour préparer la suite de votre écoute."; color: Theme.muted; font-size: 12px; wrap: word-wrap; }
+                        if root.up-next-rows.length > 0: TrackList { height: root.up-next-rows.length * 62px; rows: root.up-next-rows; actions: false; busy: root.busy; play(row) => { root.play-queued(row); } request-artwork(row) => { root.request-artwork(row); } }
+                    }
+                }
+                if root.queue-open: VerticalLayout {
+                    spacing: 12px;
+                    Text { text: root.queue-rows.length + " titres dans cette session"; color: Theme.muted; font-size: 12px; }
+                    TrackList { rows: root.queue-rows; actions: false; selected-id: root.selected-id; busy: root.busy; play(row) => { root.play-queued(row); } request-artwork(row) => { root.request-artwork(row); } }
+                    ActionButton { text: "Vider la file"; enabled: root.queue-rows.length > 0; clicked => { root.clear-queue(); } }
                 }
             }
-            if root.queue-open: VerticalLayout {
-                spacing: 12px;
-                Text { text: root.queue-rows.length + " songs in this session"; color: Theme.muted; font-size: 12px; }
-                TrackList { rows: root.queue-rows; actions: false; selected-id: root.selected-id; busy: root.busy; play(row) => { root.play-queued(row); } }
-                ActionButton { text: "Clear queue"; enabled: root.queue-rows.length > 0; clicked => { root.clear-queue(); } }
-            }
         }
-    }
-    if root.error-message != "": Rectangle {
-        x: root.rail-width + 32px; y: root.height - 112px - self.height; width: root.width - root.rail-width - 64px;
-        height: error-text.preferred-height + 24px; background: #382625; border-radius: 6px;
-        error-text := Text { x: 12px; y: 12px; width: parent.width - 24px; text: root.error-message; color: Theme.error; wrap: word-wrap; font-size: 13px; }
-    }
-    PlayerControls {
-        x: 0; y: root.height - 96px; width: root.width; height: 96px;
-        loaded: root.loaded; playing: root.playing; busy: root.busy; status: root.status;
-        volume <=> root.volume; title: root.track-title; artist: root.track-artist; artwork: root.track-artwork;
-        duration-label: root.duration-label; elapsed: root.elapsed-label;
-        progress: root.duration-seconds > 0 ? root.position-seconds / root.duration-seconds : 0;
-        can-next: root.can-next; can-previous: root.can-previous; repeat: root.repeat; shuffle: root.shuffle;
-        saved: root.saved-current; queue-open: root.queue-open; details-open: root.details-open;
-        can-save: root.library-ready && root.selected-id != "";
-        toggle-play => { root.toggle-play(); } stop => { root.stop(); }
-        volume-changed(value) => { root.volume-changed(value); } mute => { root.mute(); }
-        next => { root.next-track(); } previous => { root.previous-track(); }
-        toggle-repeat => { root.repeat = !root.repeat; } toggle-shuffle => { root.shuffle = !root.shuffle; root.queue-mode-changed(); }
-        toggle-save => { root.save-current(); }
-        toggle-queue => { root.queue-open = !root.queue-open; }
-        toggle-details => { root.queue-open = false; root.details-open = !root.details-open; }
-    }
+        if root.error-message != "": Rectangle {
+            x: root.rail-width + 20px; y: root.height - 102px - self.height; width: root.width - root.rail-width - 40px;
+            height: error-text.preferred-height + 24px; background: #382625; border-radius: 6px;
+            error-text := Text { x: 12px; y: 12px; width: parent.width - 24px; text: root.error-message; color: Theme.error; wrap: word-wrap; font-size: 13px; }
+        }
+        PlayerControls {
+            x: 0; y: root.height - 88px; width: root.width; height: 88px;
+            loaded: root.loaded; playing: root.playing; busy: root.busy; status: root.status; volume <=> root.volume;
+            title: root.track-title; artist: root.track-artist; artwork: root.track-artwork;
+            duration-label: root.duration-label; elapsed: root.elapsed-label;
+            progress: root.duration-seconds > 0 ? root.position-seconds / root.duration-seconds : 0;
+            can-next: root.can-next; can-previous: root.can-previous; repeat: root.repeat; shuffle: root.shuffle;
+            saved: root.saved-current; queue-open: root.queue-open; details-open: root.details-open;
+            can-save: root.library-ready && root.selected-id != "";
+            toggle-play => { root.toggle-play(); } stop => { root.stop(); } volume-changed(value) => { root.volume-changed(value); } mute => { root.mute(); }
+            next => { root.next-track(); } previous => { root.previous-track(); }
+            toggle-repeat => { root.repeat = !root.repeat; } toggle-shuffle => { root.shuffle = !root.shuffle; root.queue-mode-changed(); }
+            toggle-save => { root.save-current(); } toggle-queue => { root.queue-open = !root.queue-open; }
+            toggle-details => { root.queue-open = false; if root.width < 1200px { root.small-panel-open = !root.small-panel-open; } else { root.details-open = !root.details-open; } }
+        }
     }
 }

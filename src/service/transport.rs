@@ -112,21 +112,7 @@ fn bytes(
 impl Transport {
     pub fn artwork(&self, raw: &str, cancel: &Cancellation) -> Result<Vec<u8>, ServiceError> {
         cancel.check()?;
-        let url = Url::parse(raw).map_err(|_| ServiceError::DestinationRejected)?;
-        if url.scheme() != "https"
-            || url.port_or_known_default() != Some(443)
-            || !url.username().is_empty()
-            || url.password().is_some()
-            || url.fragment().is_some()
-            || !matches!(
-                url.domain(),
-                Some(
-                    "lh3.googleusercontent.com" | "lh3.ggpht.com" | "yt3.ggpht.com" | "i.ytimg.com"
-                )
-            )
-        {
-            return Err(ServiceError::DestinationRejected);
-        }
+        let url = artwork_url(raw)?;
         let response = self
             .agent
             .get(url.as_str())
@@ -263,4 +249,28 @@ impl Transport {
         }
         Err(ServiceError::DestinationRejected)
     }
+}
+
+pub(super) fn artwork_url(raw: &str) -> Result<Url, ServiceError> {
+    let url = Url::parse(raw).map_err(|_| ServiceError::DestinationRejected)?;
+    if url.scheme() != "https"
+        || url.port_or_known_default() != Some(443)
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.fragment().is_some()
+        || !matches!(
+            url.domain(),
+            Some(
+                "lh3.googleusercontent.com"
+                    | "yt3.googleusercontent.com"
+                    | "lh3.ggpht.com"
+                    | "yt3.ggpht.com"
+                    | "i.ytimg.com"
+            )
+        )
+    {
+        return Err(ServiceError::DestinationRejected);
+    }
+
+    Ok(url)
 }
