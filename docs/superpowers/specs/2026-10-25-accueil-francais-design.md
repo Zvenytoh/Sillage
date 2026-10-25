@@ -1,7 +1,9 @@
 # Sillage — conception française et accueil musical
 
 Statut : **brouillon de brainstorming, non approuvé**. Aucune modification produit
-autorisée par ce document seul. La question sur le parcours d'accueil reste ouverte.
+autorisée par ce document seul. L'utilisateur précise vouloir un accueil de type
+Apple Music/Spotify et accepte la comparaison de maquettes. Aucun choix visuel
+ni approbation de la conception complète n'a encore été reçu.
 
 ## Demande confirmée
 
@@ -20,7 +22,7 @@ de lecture audible, de tests unitaires ou d'accès au compte n'en découle.
 
 - Accueil personnel d'abord : reprendre ses écoutes, puis découvrir les tendances.
 - France comme pays initial des tendances ; interface française, catalogue mondial.
-- Accent pervenche `#8EA0FF`, surfaces noires/charbon, contraste conservé.
+- Accent pervenche `#9CA9FF`, surfaces noires/charbon, contraste conservé.
 - Historique local, dédupliqué, limité à 200 titres ; aucune synchronisation de compte.
 - Une écoute rejoint l'historique après 30 s de PCM consommé, ou après la moitié
   d'un titre de moins de 60 s. Une ouverture ratée, recherche ou préparation seule
@@ -35,11 +37,30 @@ La capture devient une référence de composition ; il ne faut pas reproduire se
 identifiants, son orange ou ses données de compte. Trois directions ont été
 considérées : ambre doux (trop proche de la chaleur de la référence), rose poudré
 (distinct mais plus expressif), pervenche (retenu pour une lecture nocturne et
-une séparation claire des deux accents rejetés). Une comparaison visuelle reste
-à présenter si l'utilisateur accepte les maquettes.
+une séparation claire des deux accents rejetés). La comparaison visuelle est disponible ci-dessous ; les choix restent ouverts.
+
+## Comparaison visuelle présentée
+
+Trois compositions interactives ont été ouvertes dans le navigateur intégré :
+A Équilibré (récents puis tendances), B Éditorial (sélection à la une puis récents),
+C Immédiat (raccourcis compacts puis tendances). Accents indépendants : pervenche
+`#9CA9FF`, rose `#E89CB8`, ambre `#E5BB7A`.
+Recommandation de l'agent : A/pervenche, à confirmer par l'utilisateur.
+
+Maquettes locales non livrées dans l'app : `.tools/french-home-mocks/content/`.
+Pochettes réelles du catalogue public Apple/iTunes, données d'écoute et classement
+clairement illustratifs, aucun son. La future implémentation devra résoudre les
+images du catalogue YouTube Music par identifiant ; aucune dépendance Apple
+ajoutée au produit. Captures A/B/C dans `.tools/french-home-mocks/`.
+
+Inspection visuelle du prototype à 1360×950 et au viewport intégré par défaut ;
+24 images affichées, aucune manquante lors du contrôle A. Volume de la maquette
+contrôlé au clavier à 100 %, 0 %, puis restauration à 55 %. Ces observations
+ne valident ni le volume natif ni le rendu du lecteur Rust. Serveur de comparaison
+temporaire sur loopback, télémétrie désactivée ; aucune modification produit.
 
 Palette proposée : fond `#090A0D`, surfaces `#14151B`, survol `#242630`, texte
-`#F4F4F7`, secondaire `#ADB0BD`, accent `#8EA0FF`, texte sur accent `#111326`.
+`#F4F4F7`, secondaire `#ADB0BD`, accent `#9CA9FF`, texte sur accent `#111326`.
 L'accent porte lecture principale, navigation active, sélection et progression.
 Les titres ordinaires restent blancs ; les pochettes portent l'essentiel de la
 couleur. Pas de halo ni de flou permanent. Un dégradé statique discret dans
