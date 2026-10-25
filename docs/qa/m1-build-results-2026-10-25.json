@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-25",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "target": "x86_64-pc-windows-gnu",
+  "format_check": "passed",
+  "clippy_all_targets_deny_warnings": "passed",
+  "release_build_all_binaries": "passed",
+  "unit_tests": "not_run",
+  "native_ui": "not_launched",
+  "audible_output_check": "not_run",
+  "artifacts": [
+    {
+      "path": "dist/Sillage-local-preview.exe",
+      "bytes": 13327872,
+      "sha256": "B1E568807AD9E4C1883812F0C09F2346D1CC371CB6BA062AF220A2EB0B4D5DA6"
+    },
+    {
+      "path": "dist/Sillage-audio-output-check.exe",
+      "bytes": 590336,
+      "sha256": "49F6B51FC021024BFEB4A3C7ECC5FFA85CD5FC3452DB87D7EB050B3C57A2A291"
+    }
+  ]
+}

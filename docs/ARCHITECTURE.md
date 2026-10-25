@@ -1,6 +1,8 @@
 # Architecture cible
 
-Ce document décrit le futur client. Aucun module applicatif n'existe encore.
+Le premier socle local M1 est implémenté ; les modules service, stockage,
+pochettes et mises à jour restent une architecture cible. Le lecteur n'a pas été
+lancé et aucune validation visuelle ou sonore de M1 n'est acquise.
 
 ## Flux principal
 
@@ -32,11 +34,13 @@ L'audio poursuit la lecture lorsque la fenêtre est masquée.
 | `src/service/stream.rs` | Résolution du flux et de ses capacités |
 | `src/service/auth.rs` | Connexion explicite et état de session |
 | `src/playback/mod.rs` | Machine de lecture et commandes audio |
+| `src/playback/source.rs` | Décodage local sur worker et petite file PCM bornée |
 | `src/playback/buffer.rs` | Source progressive, fenêtre mémoire et recherche temporelle |
 | `src/storage.rs` | Paramètres, reprise atomique et versions du format local |
 | `src/artwork.rs` | Chargement, redimensionnement et éviction des pochettes |
 | `src/platform/mod.rs`, `media.rs`, `tray.rs`, `instance.rs`, `secrets.rs` | Frontières Windows et ressources natives |
 | `src/update.rs` | Vérification et préparation des mises à jour |
+| `src/bin/audio-output-check.rs` | Contrôle sonore explicite, distinct du lancement UI |
 | `ui/app.slint`, `theme.slint`, `player.slint`, `library.slint` | Présentation, tokens, lecteur, navigation et listes |
 | `scripts/`, `installer/`, `.github/workflows/` | Mesures, installation et vérifications autorisées |
 

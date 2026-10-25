@@ -2,10 +2,22 @@
 
 ## Application status
 
-Sillage currently distributes documentation, generated application artwork and
-vendored development skills. It does not yet distribute an application binary
-or third-party Rust runtime code. The future application's own license remains
-to be selected.
+Sillage publishes original application code under MIT, documentation, generated
+artwork and vendored development skills. No application binary is published yet.
+Third-party Rust sources are downloaded by Cargo, not vendored here.
+
+## Application dependencies
+
+- Slint 1.18.1: the Royalty-free Desktop/Mobile/Web 2.0 path is selected. An
+  accessible AboutSlint widget is implemented; runtime access needs checking
+  before binary distribution.
+- rodio 0.23.0: MIT OR Apache-2.0; CPAL 0.18.2: Apache-2.0. Retain their applicable notices.
+- Symphonia 0.5.5: MPL-2.0; retain covered-source notices and applicable source availability obligations.
+- windows-rs 0.62.2: MIT OR Apache-2.0; retain applicable notices.
+
+Cargo.lock records exact transitive versions. A full redistribution notice bundle
+is still required before publishing an executable/installer. No Segoe UI font file
+is distributed. The current binary remains a local build artifact.
 
 ## Reference implementation
 

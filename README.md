@@ -16,10 +16,11 @@
 </p>
 
 > [!NOTE]
-> **Early days. Clear direction.** Sillage is in pre-development. This repository
-> contains the design, implementation plan, development instructions, and application
-> artwork. There is no runnable player or download yet. Features below describe the
-> intended product; performance figures are engineering targets.
+> **Early development.** The first native local-file player is implemented in source;
+> its interface and audio behavior still require runtime validation. Public search,
+> bounded stream retrieval and a silent AAC decoding experiment have succeeded.
+> There is no packaged public release yet. Catalog/account features below remain
+> planned; performance figures are engineering targets.
 
 ## The idea
 
@@ -109,8 +110,8 @@ Each milestone has a working deliverable and a condition for moving forward.
 | Stage | Deliverable | Status |
 | :--- | :--- | :--- |
 | **Foundation** | Architecture, roadmap, agent workflow, application artwork | Available in this repository |
-| **M0 · Prove the connection** | Establish search, stream access, formats, and account feasibility | Planned |
-| **M1 · Make it play** | A native local-file player with a coherent UI and playback state | Planned |
+| **M0 · Prove the connection** | Establish search, stream access, formats, and account feasibility | Public retrieval and silent decoding checked; output/account work remains |
+| **M1 · Make it play** | A native local-file player with a coherent UI and playback state | First implementation; runtime QA pending |
 | **M2 · Bring the catalog in** | Public search, browsing, streaming, queue recovery, and Windows controls | Planned |
 | **M3 · Make it personal** | Protected sign-in and the personal library capabilities proven in M0 | Planned |
 | **M4 · Make it hold up** | Visual refinement, accessibility, measured performance, installation, and updates | Planned |
@@ -141,8 +142,22 @@ You can [watch the repository](https://github.com/Zvenytoh/Sillage) for progress
 or [open an issue](https://github.com/Zvenytoh/Sillage/issues) with a concrete
 listening scenario, accessibility need, or service compatibility concern.
 
-There are no build commands to run yet: the Rust application has not been scaffolded.
-The useful starting point today is the design and its roadmap.
+### Build the local-file preview
+
+Use Windows 11 x64, Rust 1.92 or newer, and a working Windows linker/toolchain.
+
+```powershell
+cargo build --locked --release --bin sillage
+```
+
+The development preview has a native file picker, Play/Pause, Stop and volume.
+It has no YouTube catalog or account connection yet. Opening prepares the file
+paused; Play opens the output device. Standard builds write to `target/release/`.
+
+The [output check](docs/research/audio-output-check.md) and
+[M1 record](docs/qa/m1-local-player.md) distinguish implementation, compilation
+and runtime verification. The agent has not launched this preview or used desktop
+automation. There is no packaged release yet.
 
 | Read | For |
 | :--- | :--- |
@@ -180,6 +195,6 @@ independent project; reused code, if any, must retain its attribution and licens
 
 **Independence and licensing.** Sillage is unofficial and is not affiliated with
 Google or YouTube. Their names and trademarks belong to their owners. The application
-code license will be selected before its publication. Vendored development skills
-retain their own licenses. The application icon is an AI-generated raster asset;
+code is licensed under [MIT](LICENSE). Dependencies and vendored development skills
+retain their own licenses; see [third-party notes](THIRD_PARTY.md). The application icon is an AI-generated raster asset;
 its source and inspection notes are documented separately.

@@ -35,7 +35,8 @@ télégraphiques. Superpowers structure la tâche utile, sans reposer des questi
 déjà tranchées. Les skills sont lus à la demande ; aucun chargement global ajouté.
 
 Graphify est préparé, mais son moteur n'est pas installé et aucun graphe n'a été
-construit pour ce dépôt documentaire. À l'arrivée du code, utiliser un index
+construit lors de la préparation documentaire. Le socle local M1 existe
+désormais ; son premier index reste à générer avec le moteur. Utiliser un index
 structurel ciblé, sans secrets ni dépendances. Lire le skill avant sa génération.
 Pour une requête, budget initial de 1 200 tokens ; élargir seulement si insuffisant.
 Ne pas utiliser `--watch`, hook post-commit ou extraction sémantique globale par défaut.

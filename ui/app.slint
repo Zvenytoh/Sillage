@@ -1,0 +1,87 @@
+import { Button, AboutSlint } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { PlayerControls } from "player.slint";
+
+export component AboutWindow inherits Window {
+    title: "About Sillage";
+    width: 360px;
+    height: 240px;
+    VerticalLayout {
+        padding: 24px;
+        Text { text: "Sillage"; font-size: 24px; font-weight: 700; }
+        Text { text: "Version 0.1.0 · MIT"; }
+        AboutSlint { }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Sillage";
+    icon: @image-url("../assets/sillage.png");
+    preferred-width: 1040px;
+    preferred-height: 660px;
+    min-width: 800px;
+    min-height: 560px;
+    background: Theme.paper;
+    default-font-family: "Segoe UI";
+    in property <string> track-title: "Your next track starts here.";
+    in property <string> duration-label: "MP3 · M4A · WAV · FLAC · Ogg Vorbis";
+    in property <string> status: "Choose an audio file to begin.";
+    in property <string> error-message;
+    in property <bool> loaded;
+    in property <bool> playing;
+    in property <bool> busy;
+    in-out property <float> volume: 25;
+    callback open-file();
+    callback toggle-play();
+    callback stop();
+    callback volume-changed(float);
+    callback show-about();
+
+    HorizontalLayout {
+        spacing: 0;
+        Rectangle {
+            width: 208px;
+            background: Theme.pine;
+            VerticalLayout {
+                padding: 28px;
+                spacing: 20px;
+                Image { source: @image-url("../assets/sillage.png"); width: 60px; height: 60px; }
+                Text { text: "Sillage"; color: Theme.paper; font-size: 27px; font-weight: 700; }
+                Text { text: "Music in motion."; color: #bfcebf; font-size: 13px; }
+                Rectangle { height: 1px; background: #3b5043; }
+                Text { text: "Local listening"; color: Theme.citron; font-size: 15px; font-weight: 600; }
+                Rectangle { vertical-stretch: 1; }
+                Button { text: "About Sillage"; clicked => { root.show-about(); } }
+            }
+        }
+        VerticalLayout {
+            spacing: 0;
+            VerticalLayout {
+                padding: 40px;
+                spacing: 22px;
+                HorizontalLayout {
+                    Text { text: "Your music, close at hand."; color: Theme.pine; font-size: 23px; font-weight: 600; vertical-alignment: center; horizontal-stretch: 1; }
+                    Button { text: "Open audio file"; enabled: !root.busy; clicked => { root.open-file(); } }
+                }
+                Rectangle { height: 1px; background: Theme.line; }
+                Rectangle { vertical-stretch: 1; }
+                Image { source: @image-url("../assets/sillage.png"); width: 144px; height: 144px; }
+                Text { text: root.track-title; color: Theme.pine; font-size: 30px; font-weight: 650; wrap: word-wrap; overflow: elide; }
+                Text { text: root.duration-label; color: Theme.muted; font-size: 14px; }
+                Text { text: root.error-message; color: Theme.error; font-size: 14px; wrap: word-wrap; visible: root.error-message != ""; }
+                Rectangle { vertical-stretch: 1; }
+            }
+            PlayerControls {
+                height: 128px;
+                loaded: root.loaded;
+                playing: root.playing;
+                busy: root.busy;
+                status: root.status;
+                volume <=> root.volume;
+                toggle-play => { root.toggle-play(); }
+                stop => { root.stop(); }
+                volume-changed(value) => { root.volume-changed(value); }
+            }
+        }
+    }
+}

@@ -1,9 +1,10 @@
 # Dependency and licensing investigation
 
 Date: 2026-10-25. This records source inspection, not a resolved Sillage dependency
-graph for the application. There is no application Cargo manifest yet. A separate
-development utility under `tools/decode-probe/` now pins Symphonia 0.5.5 with only
-AAC/MP4 features and commits its own lockfile; it does not include audio output.
+graph for the application at the initial investigation. The application now has
+its own manifest and lockfile: Slint 1.18.1, rodio 0.23.0, CPAL 0.18.2 and
+Symphonia 0.5.5. A separate utility under `tools/decode-probe/` pins Symphonia
+0.5.5 with only AAC/MP4 features and its own lockfile; that utility has no output.
 
 ## Reference versions
 
@@ -26,8 +27,8 @@ or to pin Sillage blindly to that dependency graph.
 The [Slint royalty-free terms](https://slint.dev/terms-and-conditions) provide
 an attribution choice: an accessible AboutSlint widget or a discoverable public
 webpage badge. A proposed Sillage implementation would use an About screen.
-The future application's own license is still undecided; this investigation
-does not silently place all dependencies under MIT.
+The user subsequently selected MIT for original application code. Dependencies
+retain their own licenses; MIT does not relicense their covered code.
 
 The [rodio development README](https://github.com/RustAudio/rodio) warns of a core
 engine rewrite and example/release differences. Use a released crate and its
