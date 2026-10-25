@@ -10,6 +10,7 @@ découverts à l'ouverture du projet ou au prochain tour qui actualise le catalo
 |---|---|---|
 | `.codex/skills/ponytail/` | Modification minimale complète | Copie du skill personnel fourni par l'utilisateur ; frontmatter MIT |
 | `.codex/skills/caveman/` | Chat concis, sens et erreurs conservés | JuliusBrussee/caveman, commit `1f951fb4ad40ba63302c6e7f987147e034d599d9` |
+| `.codex/skills/i-have-adhd/` | Suivi explicite, étapes courtes et prochaine action | Copie du skill personnel explicitement invoqué par l'utilisateur ; frontmatter MIT |
 | `.codex/skills/graphify/` | Relations entre fichiers et architecture | Graphify-Labs/graphify, copie locale version `0.9.92` |
 | `.codex/skills/brainstorming/` | Cadrage d'un besoin | Superpowers, copie locale commit `bb92a77741419a4ab5f06e711a283343f1ada0c3` |
 | `.codex/skills/writing-plans/` | Plan d'implémentation | Même provenance Superpowers |

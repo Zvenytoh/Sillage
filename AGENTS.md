@@ -4,7 +4,7 @@
 
 - Respecter d'abord les instructions explicites de l'utilisateur. Ce fichier prime sur les workflows des skills.
 - Lire `README.md`, `docs/STATUS.md`, puis la section pertinente de `docs/ARCHITECTURE.md` avant une modification.
-- Lire le design et la tâche active du plan avant de coder. Le dépôt contient actuellement une conception à revoir, pas une autorisation d'implémenter le lecteur.
+- Lire le design et la tâche active du plan avant de coder. L'utilisateur a demandé de suivre la roadmap le 25 octobre 2026 ; respecter ses jalons et les autorisations de vérification distinctes.
 - Projet distinct d'UltraMusic. Ne modifier ni son dépôt, ni ses profils, cookies, réglages, assets ou identifiants d'installation.
 - Cible de cadrage : Windows 11 x64. Stack : Rust + Slint, Symphonia + rodio, intégration Windows par `windows-rs`.
 - Aucun WebView, Electron, Chromium embarqué, serveur local permanent ou frontend JavaScript dans le lecteur.
@@ -13,6 +13,8 @@
 
 - Ponytail est la règle par défaut : plus petit changement complet, réutilisation avant ajout, aucune abstraction spéculative.
 - Caveman concerne la concision du chat. Garder un français clair ; conserver les erreurs, négations, unités et chemins exacts.
+- i-have-adhd structure le suivi : état actuel explicite, une tâche active, étapes numérotées si nécessaire, au plus cinq éléments visibles et une prochaine action concrète.
+- Using-superpowers guide la sélection du skill pertinent avant l'action. Utiliser les compétences appropriées, sans relire tous les skills à chaque tour ni réouvrir des décisions déjà approuvées.
 - Charger les skills locaux à la demande, jamais tous à chaque tour : voir `docs/TOOLING.md`.
 - Superpowers : brainstorming pour préciser un besoin, writing-plans pour planifier, executing-plans pour exécuter une tâche approuvée, systematic-debugging pour diagnostiquer, verification-before-completion avant toute annonce de réussite.
 - Aucun sous-agent, délégation, audit par un autre modèle ou travail parallèle d'agents sans demande explicite de l'utilisateur. Effectuer la revue soi-même.
